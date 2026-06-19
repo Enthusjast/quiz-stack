@@ -1,0 +1,33 @@
+import { createRouter, createWebHashHistory } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router'
+
+const routes: RouteRecordRaw[] = [
+  {
+    path: '/',
+    name: 'home',
+    component: () => import('@/pages/HomePage.vue'),
+  },
+  {
+    path: '/quiz/:bankId',
+    name: 'quiz',
+    component: () => import('@/pages/QuizPage.vue'),
+    props: true,
+  },
+  {
+    path: '/wrong-problems',
+    name: 'wrong-problems',
+    component: () => import('@/pages/WrongProblemsPage.vue'),
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    component: () => import('@/pages/NotFoundPage.vue'),
+  },
+]
+
+const router = createRouter({
+  history: createWebHashHistory(),
+  routes,
+})
+
+export default router
