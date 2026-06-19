@@ -1,0 +1,74 @@
+{
+  "categories": ["政治", "入学", "前端", "编程基础", "测试"],
+  "recommended": ["2025jdsgy"],
+  "banks": {
+    "demo": {
+      "title": "Demo 题库 — 综合练习",
+      "categories": ["前端", "编程基础"],
+      "questionCount": 20,
+      "time": 2025,
+      "new": true
+    },
+    "2025jdsgy": {
+      "title": "2025中国近代史纲要-2025复核后版本 Sheet1",
+      "categories": ["政治"],
+      "questionCount": 765,
+      "time": 2025,
+      "new": true
+    },
+    "2024sxdd": {
+      "title": "2024年思想道德与法治无纸化考试题库",
+      "categories": ["政治"],
+      "questionCount": 698,
+      "time": 2024
+    },
+    "2024xgxj": {
+      "title": "2024年校规校纪知识测试题库(130题)",
+      "categories": ["入学"],
+      "questionCount": 130,
+      "time": 2024
+    },
+    "2024dekt": {
+      "title": "2024年第二课堂知识测试题库(47题)",
+      "categories": ["入学"],
+      "questionCount": 47,
+      "time": 2024
+    },
+    "2024jdsgy": {
+      "title": "2024近代史纲要机考题库",
+      "categories": ["政治"],
+      "questionCount": 780,
+      "time": 2024
+    },
+    "2023sxdd": {
+      "title": "2023思想道德与法治无纸化考试题库",
+      "categories": ["政治"],
+      "questionCount": 627,
+      "time": 2023
+    },
+    "2023xgxj": {
+      "title": "2023年校规校纪知识测试题库(134题)",
+      "categories": ["入学"],
+      "questionCount": 134,
+      "time": 2023
+    },
+    "2023dekt": {
+      "title": "2023第二课堂知识测试题库(60题)",
+      "categories": ["入学"],
+      "questionCount": 60,
+      "time": 2023
+    },
+    "2023txll": {
+      "title": "2023年团校理论知识考试试卷(题库)(30选择题+43填空题)",
+      "categories": ["入学"],
+      "questionCount": 72,
+      "time": 2023
+    },
+    "test": {
+      "title": "[系统测试]不同题型测试",
+      "categories": ["测试"],
+      "questionCount": 4,
+      "time": 2023
+    }
+  }
+}

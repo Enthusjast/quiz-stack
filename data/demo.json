@@ -1,0 +1,146 @@
+{
+  "title": "Demo 题库 — 综合练习",
+  "problems": [
+    {
+      "type": 1,
+      "content": "HTML 的全称是什么？",
+      "choices": [
+        "Hyper Text Markup Language",
+        "High Tech Modern Language",
+        "Hyper Transfer Markup Language",
+        "Home Tool Markup Language"
+      ],
+      "answer": 0,
+      "hint": "HTML = Hyper Text Markup Language（超文本标记语言）"
+    },
+    {
+      "type": 1,
+      "content": "以下哪个不是 JavaScript 的数据类型？",
+      "choices": ["String", "Boolean", "Float", "Symbol"],
+      "answer": 2,
+      "hint": "JavaScript 有 7 种原始类型：string, number, bigint, boolean, undefined, symbol, null。Float 属于 number 类型。"
+    },
+    {
+      "type": 1,
+      "content": "CSS 中，以下哪个属性用来设置文本颜色？",
+      "choices": ["font-color", "text-color", "color", "foreground"],
+      "answer": 2,
+      "hint": "使用 `color` 属性设置前景文本颜色。"
+    },
+    {
+      "type": 1,
+      "content": "Vue 3 中，Composition API 的核心函数叫什么？",
+      "choices": ["createComponent", "setup", "useComposition", "defineComponent"],
+      "answer": 1,
+      "hint": "`setup()` 是 Composition API 的入口函数，在 `<script setup>` 中自动调用。"
+    },
+    {
+      "type": 1,
+      "content": "Git 中，将暂存区的修改提交到本地仓库的命令是？",
+      "choices": ["git push", "git add", "git commit", "git merge"],
+      "answer": 2,
+      "hint": "git add → 暂存区，git commit → 本地仓库，git push → 远程仓库"
+    },
+    {
+      "type": 2,
+      "content": "以下哪些是前端框架？（多选）",
+      "choices": ["Vue", "Django", "React", "Angular"],
+      "answer": [0, 2, 3],
+      "hint": "Django 是 Python 的后端框架，Vue、React、Angular 是前端框架。"
+    },
+    {
+      "type": 2,
+      "content": "TypeScript 相比 JavaScript 增加了哪些特性？（多选）",
+      "choices": ["静态类型检查", "接口 (Interface)", "枚举 (Enum)", "垃圾回收"],
+      "answer": [0, 1, 2],
+      "hint": "垃圾回收是 JavaScript 引擎已有的功能，TypeScript 主要添加了类型系统。"
+    },
+    {
+      "type": 2,
+      "content": "以下哪些是 HTTP 请求方法？（多选）",
+      "choices": ["GET", "SEND", "POST", "DELETE"],
+      "answer": [0, 2, 3],
+      "hint": "常见的 HTTP 方法：GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS。SEND 不存在。"
+    },
+    {
+      "type": 3,
+      "content": "CSS 中，用于创建弹性布局的 display 属性值是 ____。",
+      "answer": "flex",
+      "hint": "`display: flex` 启用弹性盒布局模型。"
+    },
+    {
+      "type": 3,
+      "content": "在终端中，查看当前目录下所有文件（包括隐藏文件）的命令是 ____。",
+      "answer": "ls -a;ls -la;ls -al",
+      "hint": "`ls -a` 列出所有文件（包括以 . 开头的隐藏文件）。分号分隔的多个答案都算正确。"
+    },
+    {
+      "type": 3,
+      "content": "JavaScript 中，将字符串转换为整数的内置函数是 ____。",
+      "answer": "parseInt;parseint",
+      "hint": "`parseInt()` 和 `Number()` 都可以转换，接受 parseInt 或 Number 作为答案。"
+    },
+    {
+      "type": 4,
+      "content": "Vite 是一个前端构建工具。",
+      "choices": ["正确", "错误"],
+      "answer": 0,
+      "hint": "Vite 是新一代前端构建工具，它利用 ES 模块实现极快的开发服务器启动和热更新。"
+    },
+    {
+      "type": 4,
+      "content": "CSS 中的 `z-index` 属性对 `position: static` 的元素有效。",
+      "choices": ["正确", "错误"],
+      "answer": 1,
+      "hint": "z-index 只对定位元素（position 不为 static）有效。"
+    },
+    {
+      "type": 4,
+      "content": "`const` 声明的变量的值不能被修改。",
+      "choices": ["正确", "错误"],
+      "answer": 1,
+      "hint": "const 声明的变量不能重新赋值，但对象和数组的内容可以修改（如 push、属性赋值等）。"
+    },
+    {
+      "type": 4,
+      "content": "在 Vue 3 中，`v-model` 默认使用 `modelValue` prop 和 `update:modelValue` 事件。",
+      "choices": ["正确", "错误"],
+      "answer": 0,
+      "hint": "Vue 3 中 v-model 的默认绑定为 modelValue + update:modelValue，也可以指定参数如 v-model:title。"
+    },
+    {
+      "type": 1,
+      "content": "以下哪种不是 CSS 的定位方式？",
+      "choices": ["static", "relative", "absolute", "floating"],
+      "answer": 3,
+      "hint": "CSS 的 position 属性支持：static, relative, absolute, fixed, sticky。没有 floating。"
+    },
+    {
+      "type": 1,
+      "content": "RESTful API 中，更新资源的 HTTP 方法通常是？",
+      "choices": ["GET", "POST", "PUT", "DELETE"],
+      "answer": 2,
+      "hint": "PUT 用于更新或替换整个资源，PATCH 用于部分更新。"
+    },
+    {
+      "type": 1,
+      "content": "Promise 的三种状态不包括？",
+      "choices": ["pending", "fulfilled", "rejected", "completed"],
+      "answer": 3,
+      "hint": "Promise 只有三种状态：pending（进行中）、fulfilled（已成功）、rejected（已失败）。"
+    },
+    {
+      "type": 2,
+      "content": "以下哪些是 CSS 预处理器？（多选）",
+      "choices": ["Sass", "Less", "PostCSS", "Tailwind CSS"],
+      "answer": [0, 1],
+      "hint": "Sass 和 Less 是 CSS 预处理器。PostCSS 是 CSS 后处理器/转换工具。Tailwind CSS 是一个 CSS 框架。"
+    },
+    {
+      "type": 3,
+      "content": "使用 Git 克隆仓库的命令是 git ____。",
+      "answer": "clone",
+      "hint": "命令是 `git clone <repository-url>`"
+    }
+  ]
+}
