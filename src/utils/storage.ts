@@ -36,3 +36,15 @@ export function appendUnique<T>(arr: T[], item: T, keyFn: (item: T) => string): 
   }
   return [...arr, item]
 }
+
+/** Verify localStorage is actually writable. Returns false if storage is unavailable. */
+export function probeStorage(): boolean {
+  const testKey = '__quiz_storage_test__'
+  try {
+    localStorage.setItem(testKey, '1')
+    localStorage.removeItem(testKey)
+    return true
+  } catch {
+    return false
+  }
+}

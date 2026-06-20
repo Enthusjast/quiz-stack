@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, ChevronLeft, ChevronRight, List } from '@lucide/vue'
+import { ArrowLeft, ChevronLeft, ChevronRight, List, Save, CheckCircle2, AlertTriangle, Download, Upload } from '@lucide/vue'
 import { useQuiz } from '@/composables/useQuiz'
-import type { PracticeMode } from '@/types/problem'
+import type { PracticeMode, CustomPracticeConfig } from '@/types/problem'
 import QuestionCard from '@/components/quiz/QuestionCard.vue'
 import QuestionNav from '@/components/quiz/QuestionNav.vue'
 import QuizProgress from '@/components/quiz/QuizProgress.vue'
@@ -22,6 +22,7 @@ const {
   loading,
   error,
   title,
+  mode,
   problems,
   currentIndex,
   answers,
@@ -29,24 +30,75 @@ const {
   elapsedSeconds,
   submitted,
   showResult,
+  showResumePrompt,
+  retryCounts,
+  saveStatus,
+  lastSaveTime,
+  examSections,
+  examTotalScore,
+  examEarnedScore,
   currentProblem,
   totalCount,
   correctCount,
   attemptedCount,
+  answeredCount,
   accuracy,
   loadBank,
   goTo,
   next,
   prev,
   submitAnswer,
+  submitExam,
   retry,
   finish,
   reset,
+  resumeSession,
+  startFresh,
+  exportSession,
+  importSession,
 } = useQuiz(bankId)
+
+const importError = ref<string | null>(null)
+const importSuccess = ref(false)
+const fileInput = ref<HTMLInputElement | null>(null)
+
+function handleExport() {
+  exportSession()
+}
+
+function handleImportClick() {
+  fileInput.value?.click()
+}
+
+function handleFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = () => {
+    const err = importSession(reader.result as string)
+    if (err) {
+      importError.value = err
+      importSuccess.value = false
+    } else {
+      importError.value = null
+      importSuccess.value = true
+      setTimeout(() => { importSuccess.value = false }, 3000)
+    }
+  }
+  reader.readAsText(file)
+  // Reset input so the same file can be imported again
+  input.value = ''
+}
 
 function handleModeConfirm(mode: PracticeMode) {
   showModeSelector.value = false
   loadBank(mode)
+}
+
+function handleCustomPractice(config: CustomPracticeConfig) {
+  showModeSelector.value = false
+  loadBank('custom-practice', config)
 }
 
 function handleSubmit(answer: any) {
@@ -54,7 +106,11 @@ function handleSubmit(answer: any) {
 }
 
 function handleFinish() {
-  finish()
+  if (mode.value === 'mock-exam') {
+    submitExam()
+  } else {
+    finish()
+  }
 }
 
 function handleReset() {
@@ -73,7 +129,6 @@ function onKeydown(e: KeyboardEvent) {
   if (e.key === 'ArrowRight') next()
 }
 onMounted(() => window.addEventListener('keydown', onKeydown))
-import { onBeforeUnmount } from 'vue'
 onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
@@ -84,11 +139,29 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
       :show="showModeSelector"
       @close="router.push('/')"
       @confirm="handleModeConfirm"
+      @confirm-custom="handleCustomPractice"
     />
 
-    <!-- Loading -->
-    <div v-if="loading && !showModeSelector" class="flex items-center justify-center py-32">
-      <div class="animate-spin h-8 w-8 rounded-full border-4 border-indigo-200 border-t-indigo-600 dark:border-indigo-800 dark:border-t-indigo-400" />
+    <!-- Loading skeleton -->
+    <div v-if="loading && !showModeSelector" class="py-8 space-y-6 animate-pulse">
+      <div class="h-8 w-2/3 rounded bg-gray-200 dark:bg-gray-700" />
+      <div class="h-4 w-1/3 rounded bg-gray-200 dark:bg-gray-700" />
+      <div class="h-2 rounded-full bg-gray-200 dark:bg-gray-700" />
+      <div class="space-y-3">
+        <div v-for="i in 4" :key="i" class="h-16 rounded-lg bg-gray-200 dark:bg-gray-700" />
+      </div>
+    </div>
+
+    <!-- Resume prompt -->
+    <div v-else-if="showResumePrompt" class="py-16 text-center">
+      <div class="rounded-lg border border-indigo-200 bg-indigo-50 p-8 dark:border-indigo-800 dark:bg-indigo-950/30">
+        <p class="text-lg font-semibold text-indigo-900 dark:text-indigo-200">检测到上次的练习进度</p>
+        <p class="mt-2 text-sm text-indigo-700 dark:text-indigo-400">是否继续上次的练习？</p>
+        <div class="mt-6 flex justify-center gap-3">
+          <button class="btn btn-primary" @click="resumeSession">继续练习</button>
+          <button class="btn btn-secondary" @click="startFresh">重新开始</button>
+        </div>
+      </div>
     </div>
 
     <!-- Error -->
@@ -108,6 +181,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
           :problem-states="problemStates"
           :answers="answers"
           :elapsed-seconds="elapsedSeconds"
+          :exam-sections="examSections"
+          :exam-total-score="examTotalScore"
+          :exam-earned-score="examEarnedScore"
           @reset="handleReset"
         />
         <div class="mt-6 text-center">
@@ -127,10 +203,61 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
               <h1 class="truncate text-lg font-semibold text-gray-900 dark:text-white">
                 {{ title }}
               </h1>
-              <QuizTimer :seconds="elapsedSeconds" />
+              <div class="flex items-center gap-3">
+                <QuizTimer :seconds="elapsedSeconds" />
+                <!-- Mode badge -->
+                <span class="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
+                  {{ mode === 'sequential' ? '顺序' : mode === 'random' ? '乱序' : mode === 'mock-exam' ? '考试' : mode === 'custom-practice' ? '自定义' : '错题' }}
+                </span>
+                <!-- Save status indicator -->
+                <span
+                  v-if="saveStatus === 'saved'"
+                  class="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400"
+                  :title="`上次保存于 ${lastSaveTime}`"
+                >
+                  <CheckCircle2 class="h-3.5 w-3.5" />
+                  已保存
+                </span>
+                <span
+                  v-else-if="saveStatus === 'saving'"
+                  class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
+                >
+                  <Save class="h-3.5 w-3.5 animate-pulse" />
+                  保存中...
+                </span>
+                <span
+                  v-else-if="saveStatus === 'error'"
+                  class="inline-flex items-center gap-1 text-xs text-red-500 dark:text-red-400"
+                >
+                  <AlertTriangle class="h-3.5 w-3.5" />
+                  保存失败
+                </span>
+              </div>
             </div>
           </div>
           <div class="flex items-center gap-2 shrink-0">
+            <!-- Export / Import (hidden on mobile to save space) -->
+            <button
+              class="hidden sm:inline-flex btn btn-ghost p-1.5"
+              title="导出进度"
+              @click="handleExport"
+            >
+              <Download class="h-4 w-4" />
+            </button>
+            <button
+              class="hidden sm:inline-flex btn btn-ghost p-1.5"
+              title="导入进度"
+              @click="handleImportClick"
+            >
+              <Upload class="h-4 w-4" />
+            </button>
+            <input
+              ref="fileInput"
+              type="file"
+              accept=".json"
+              class="hidden"
+              @change="handleFileChange"
+            />
             <button
               class="btn btn-ghost p-1.5 sm:hidden"
               @click="showNavPanel = !showNavPanel"
@@ -138,9 +265,23 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
               <List class="h-5 w-5" />
             </button>
             <button class="btn btn-secondary text-sm" @click="handleFinish">
-              结束
+              {{ mode === 'mock-exam' ? '交卷' : '结束' }}
             </button>
           </div>
+        </div>
+
+        <!-- Import status messages -->
+        <div
+          v-if="importError"
+          class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 dark:border-red-800 dark:bg-red-950/30"
+        >
+          <p class="text-sm text-red-600 dark:text-red-400">{{ importError }}</p>
+        </div>
+        <div
+          v-if="importSuccess"
+          class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-2 dark:border-green-800 dark:bg-green-950/30"
+        >
+          <p class="text-sm text-green-600 dark:text-green-400">✅ 进度导入成功</p>
         </div>
 
         <!-- Progress -->
@@ -149,9 +290,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
             :current-index="currentIndex"
             :total-count="totalCount"
             :correct-count="correctCount"
-            :attempted-count="attemptedCount"
+            :attempted-count="mode === 'mock-exam' ? answeredCount : attemptedCount"
             :accuracy="accuracy"
           />
+          <!-- Exam progress: answered / total -->
+          <p v-if="mode === 'mock-exam'" class="mt-1 text-xs text-gray-500 dark:text-gray-400 text-right">
+            已作答 {{ answeredCount }} / {{ totalCount }} 题
+          </p>
         </div>
 
         <div class="flex gap-6">
@@ -166,6 +311,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
               :submitted="submitted"
               :problem-state="problemStates[currentIndex] ?? 0"
               :previous-answer="answers[currentIndex] ?? null"
+              :retry-count="retryCounts[currentIndex] ?? 0"
               @submit="handleSubmit"
               @retry="retry"
             />
@@ -201,9 +347,26 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
               <QuestionNav
                 :problem-states="problemStates"
                 :current-index="currentIndex"
+                :exam-sections="examSections.length > 0 ? examSections : undefined"
                 @go-to="goTo"
               />
             </div>
+          </div>
+        </div>
+
+        <!-- Mobile bottom bar -->
+        <div class="fixed bottom-0 left-0 right-0 z-30 border-t border-gray-200 bg-white/95 backdrop-blur-sm px-4 py-2 sm:hidden dark:border-gray-700 dark:bg-gray-900/95">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-gray-500 dark:text-gray-400">
+              {{ mode === 'sequential' ? '顺序' : mode === 'random' ? '乱序' : mode === 'mock-exam' ? '考试' : mode === 'custom-practice' ? '自定义' : '错题' }}
+            </span>
+            <span class="font-mono tabular-nums text-gray-700 dark:text-gray-300">
+              {{ currentIndex + 1 }} / {{ totalCount }}
+            </span>
+            <span v-if="saveStatus === 'saved'" class="text-green-600 dark:text-green-400">已保存</span>
+            <span v-else-if="saveStatus === 'saving'" class="text-gray-400">保存中</span>
+            <span v-else-if="saveStatus === 'error'" class="text-red-500">保存失败</span>
+            <span v-else class="text-gray-400">—</span>
           </div>
         </div>
 
@@ -218,6 +381,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
             <QuestionNav
               :problem-states="problemStates"
               :current-index="currentIndex"
+              :exam-sections="examSections.length > 0 ? examSections : undefined"
               @go-to="(i: number) => { goTo(i); showNavPanel = false }"
             />
           </div>

@@ -49,6 +49,10 @@ export type Problem =
 export interface QuestionBank {
   title: string
   problems: Problem[]
+  /** Mock exam config: number of questions (scalar = total, array = per-type [0,1,2,3,4]) */
+  test?: number | [number, number, number, number, number]
+  /** Mock exam scoring: points per problem for each type [type0, type1, type2, type3, type4] */
+  score?: [number, number, number, number, number]
 }
 
 /** Registry entry for one bank in list.json */
@@ -72,10 +76,44 @@ export interface BankRegistry {
 // ============================================================
 
 /** Practice mode */
-export type PracticeMode = 'sequential' | 'random' | 'wrong-review'
+export type PracticeMode =
+  | 'sequential'
+  | 'random'
+  | 'wrong-review'
+  | 'mock-exam'
+  | 'custom-practice'
 
-/** Problem state: 0=unanswered  1=attempted  2=correct  3=wrong */
-export type ProblemState = 0 | 1 | 2 | 3
+/** Custom practice configuration (type 1-4 filter + shuffle toggle) */
+export interface CustomPracticeConfig {
+  /** Problem types to include (1=单选, 2=多选, 3=填空, 4=判断) */
+  enabledTypes: number[]
+  /** Whether to shuffle question order */
+  shuffle: boolean
+}
+
+/** Per-section score breakdown for mock exam result display */
+export interface MockExamSection {
+  /** Type label (e.g. "单选题") */
+  typeLabel: string
+  /** Number of problems in this section */
+  count: number
+  /** Points per problem */
+  scorePerProblem: number
+  /** Total points for this section (count × scorePerProblem) */
+  totalScore: number
+  /** Number of correctly answered problems */
+  correct: number
+}
+
+/**
+ * Problem state:
+ *   -1 = re-submitted (transient, used internally)
+ *    0 = unanswered
+ *    1 = answered but not graded (mock exam only)
+ *    2 = correct
+ *    3 = wrong
+ */
+export type ProblemState = -1 | 0 | 1 | 2 | 3
 
 /** User's answer: can be a single choice index (number), multiple indices (number[]), or text (string) */
 export type UserAnswer = number | number[] | string
@@ -90,10 +128,17 @@ export interface QuizSnapshot {
   problemStates: ProblemState[]
   startTime: number
   elapsedSeconds: number
+  /** Retry count per problem */
+  retryCounts?: number[]
+  /** Unix timestamp of last save */
+  savedAt?: number
+  /** Custom practice config (for custom-practice mode) */
+  customConfig?: CustomPracticeConfig
 }
 
 /** Label for each problem type */
 export const PROBLEM_TYPE_LABELS: Record<number, string> = {
+  0: '热身题',
   1: '单选题',
   2: '多选题',
   3: '填空题',

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Moon, Sun, BookOpen } from '@lucide/vue'
+import { Moon, Sun, BookOpen, Layers } from '@lucide/vue'
 
 const router = useRouter()
 const isDark = ref(false)
+const themeStyle = ref<'card' | 'paper'>('card')
 
 function toggleTheme() {
   isDark.value = !isDark.value
@@ -12,11 +13,24 @@ function toggleTheme() {
   localStorage.setItem('quiz-stack-theme', isDark.value ? 'dark' : 'light')
 }
 
+function toggleStyle() {
+  themeStyle.value = themeStyle.value === 'card' ? 'paper' : 'card'
+  document.documentElement.classList.toggle('theme-paper', themeStyle.value === 'paper')
+  localStorage.setItem('quiz-stack-theme-style', themeStyle.value)
+}
+
 function initTheme() {
+  // Dark/light
   const saved = localStorage.getItem('quiz-stack-theme')
   if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
     isDark.value = true
     document.documentElement.classList.add('dark')
+  }
+  // Card/paper style
+  const savedStyle = localStorage.getItem('quiz-stack-theme-style') as 'card' | 'paper' | null
+  if (savedStyle === 'paper') {
+    themeStyle.value = 'paper'
+    document.documentElement.classList.add('theme-paper')
   }
 }
 
@@ -41,6 +55,13 @@ onMounted(() => initTheme())
           @click="router.push('/wrong-problems')"
         >
           错题
+        </button>
+        <button
+          class="btn btn-ghost rounded-lg p-2"
+          @click="toggleStyle"
+          :title="themeStyle === 'card' ? '切换到纸张风格' : '切换到卡片风格'"
+        >
+          <Layers class="h-5 w-5" />
         </button>
         <button
           class="btn btn-ghost rounded-lg p-2"

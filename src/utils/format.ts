@@ -24,3 +24,30 @@ export function formatTime(totalSeconds: number): string {
 export function deepCopy<T>(value: T): T {
   return structuredClone(value)
 }
+
+/**
+ * Format a timestamp as relative time (e.g. "3 分钟前", "刚刚").
+ */
+export function formatRelativeTime(timestamp: number): string {
+  const diff = Date.now() - timestamp
+  const seconds = Math.floor(diff / 1000)
+  if (seconds < 60) return '刚刚'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes} 分钟前`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} 小时前`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days} 天前`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months} 个月前`
+  return `${Math.floor(months / 12)} 年前`
+}
+
+/**
+ * Format a date as "YYYY-MM-DD HH:MM".
+ */
+export function formatDateTime(timestamp: number): string {
+  const d = new Date(timestamp)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
