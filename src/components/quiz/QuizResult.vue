@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { PreparedProblem, ProblemState, UserAnswer, MockExamSection } from '@/types/problem'
+import { CHOICE_LETTERS } from '@/types/problem'
 import { formatTime } from '@/utils/format'
 import { CircleCheckBig, RotateCcw, Trophy } from '@lucide/vue'
 
@@ -45,9 +46,28 @@ const score = computed(() =>
   totalCount.value > 0 ? Math.round((correctCount.value / totalCount.value) * 100) : 0
 )
 
-function formatAnswer(ans: UserAnswer | null | undefined): string {
+function formatAnswer(ans: UserAnswer | null | undefined, problem?: PreparedProblem): string {
   if (ans === null || ans === undefined) return '未作答'
-  if (Array.isArray(ans)) return ans.map((n) => String.fromCharCode(65 + n)).join(', ')
+
+  // Fill-in-blank: just show the text
+  if (problem?.original.type === 3) return String(ans)
+
+  // Single choice (type 1, 4): show "A. choice text"
+  if (typeof ans === 'number') {
+    const letter = CHOICE_LETTERS[ans] ?? String(ans)
+    const text = problem?.shuffledChoices[ans]
+    return text ? `${letter}. ${text}` : letter
+  }
+
+  // Multi choice (type 2): show "A. text、C. text"
+  if (Array.isArray(ans)) {
+    return ans.map((n) => {
+      const letter = CHOICE_LETTERS[n] ?? String(n)
+      const text = problem?.shuffledChoices[n]
+      return text ? `${letter}. ${text}` : letter
+    }).join('、')
+  }
+
   return String(ans)
 }
 </script>
@@ -164,8 +184,8 @@ function formatAnswer(ans: UserAnswer | null | undefined): string {
         class="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/30"
       >
         <p class="text-sm text-gray-800 dark:text-gray-200">{{ r.problem.original.content }}</p>
-        <p class="mt-1 text-xs text-red-600 dark:text-red-400">你的答案：{{ formatAnswer(r.answer) }}</p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">正确答案：{{ formatAnswer(r.problem.mappedAnswer) }}</p>
+        <p class="mt-1 text-xs text-red-600 dark:text-red-400">你的答案：{{ formatAnswer(r.answer, r.problem) }}</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">正确答案：{{ formatAnswer(r.problem.mappedAnswer, r.problem) }}</p>
       </div>
     </div>
 

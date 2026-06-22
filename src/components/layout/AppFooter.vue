@@ -5,9 +5,9 @@
   <footer class="mt-auto border-t border-gray-200 py-6 dark:border-gray-800">
     <div class="mx-auto max-w-5xl px-4 text-center text-sm text-gray-500 dark:text-gray-400">
       <p>
-        Quiz Stack — 静态刷题网站 &nbsp;|&nbsp;
+        Quiz Stack-题栈-静态刷题网站 &nbsp;|&nbsp;
         <a
-          href="https://github.com"
+          href="https://github.com/Enthusjast/quiz-stack"
           target="_blank"
           rel="noopener noreferrer"
           class="inline-flex items-center gap-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"

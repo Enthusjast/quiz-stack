@@ -1,0 +1,17 @@
+{
+  "name": "Quiz Stack — 刷题自测",
+  "short_name": "Quiz Stack",
+  "description": "静态刷题网站 — 支持单选、多选、填空、判断等多种题型，离线可用",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "lang": "zh-CN"
+}

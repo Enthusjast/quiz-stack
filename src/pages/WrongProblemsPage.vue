@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { ArrowLeft, Trash2, Download, Upload, Search, FilterX } from '@lucide/vue'
 import type { Problem } from '@/types/problem'
 import { PROBLEM_TYPE_LABELS, CHOICE_LETTERS } from '@/types/problem'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 
 const router = useRouter()
 const { wrongProblems, count, removeWrong, clearAll, exportJSON, importJSON } = useWrongProblems()
@@ -84,6 +85,36 @@ function handleImport(e: Event) {
 function clearFilters() {
   keywordFilter.value = ''
   typeFilter.value = null
+}
+
+// ---- confirmation dialog ----
+const confirmShow = ref(false)
+const confirmTitle = ref('')
+const confirmMessage = ref('')
+const confirmAction = ref<() => void>(() => {})
+
+function askConfirm(title: string, message: string, action: () => void) {
+  confirmTitle.value = title
+  confirmMessage.value = message
+  confirmAction.value = action
+  confirmShow.value = true
+}
+
+function onConfirm() {
+  confirmShow.value = false
+  confirmAction.value()
+}
+
+function confirmDeleteSelected() {
+  askConfirm('删除选中错题', `确认删除选中的 ${selectedIndices.value.size} 道错题？此操作不可恢复。`, () => {
+    deleteSelected()
+  })
+}
+
+function confirmClearAll() {
+  askConfirm('清空错题本', '确认清空所有错题？此操作不可恢复。', () => {
+    clearAll()
+  })
 }
 
 // Compute which types are present for the filter dropdown
@@ -167,12 +198,12 @@ const availableTypes = computed(() => {
         <button
           v-if="selectedIndices.size > 0"
           class="btn btn-ghost text-sm text-red-500 hover:text-red-700 dark:text-red-400"
-          @click="deleteSelected"
+          @click="confirmDeleteSelected"
         >
           <Trash2 class="h-4 w-4" />
           删除选中 ({{ selectedIndices.size }})
         </button>
-        <button class="btn btn-ghost text-sm text-red-500 hover:text-red-700 dark:text-red-400" @click="clearAll">
+        <button class="btn btn-ghost text-sm text-red-500 hover:text-red-700 dark:text-red-400" @click="confirmClearAll">
           <Trash2 class="h-4 w-4" />
           清空全部
         </button>
@@ -252,5 +283,15 @@ const availableTypes = computed(() => {
         <button class="btn btn-ghost text-sm mt-2" @click="clearFilters">清除筛选</button>
       </div>
     </template>
+
+    <!-- Confirmation dialog -->
+    <ConfirmDialog
+      :show="confirmShow"
+      :title="confirmTitle"
+      :message="confirmMessage"
+      danger
+      @confirm="onConfirm"
+      @cancel="confirmShow = false"
+    />
   </div>
 </template>

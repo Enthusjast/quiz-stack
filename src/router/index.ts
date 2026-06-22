@@ -30,4 +30,15 @@ const router = createRouter({
   routes,
 })
 
+router.afterEach((to) => {
+  if (to.name === 'home') {
+    document.title = 'Quiz Stack — 刷题自测'
+  } else if (to.name === 'wrong-problems') {
+    document.title = '错题本 — Quiz Stack'
+  } else if (to.name === 'not-found') {
+    document.title = '404 — Quiz Stack'
+  }
+  // quiz page sets title dynamically from bank data
+})
+
 export default router

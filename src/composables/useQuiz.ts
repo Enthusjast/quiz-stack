@@ -9,6 +9,7 @@ import type {
   QuizSnapshot,
   CustomPracticeConfig,
   MockExamSection,
+  PreparedProblem,
 } from '@/types/problem'
 import { PROBLEM_TYPE_LABELS } from '@/types/problem'
 import { shuffle, shuffleChoices } from '@/utils/shuffle'
@@ -62,21 +63,6 @@ export function clearAllSnapshots(bankId: string) {
   unregisterSession(bankId, 'wrong-review')
   unregisterSession(bankId, 'mock-exam')
   unregisterSession(bankId, 'custom-practice')
-}
-
-// ============================================================
-// Prepare problem helpers
-// ============================================================
-
-/**
- * Represents a single question ready for display (choices may be shuffled).
- */
-export interface PreparedProblem {
-  original: Problem
-  /** Shuffled choices (for type 1, 2, 4). Empty for type 3. */
-  shuffledChoices: string[]
-  /** Answer mapped to shuffled indices (or string for fill-in-blank). */
-  mappedAnswer: number | number[] | string
 }
 
 function prepareProblem(problem: Problem, rng: () => number): PreparedProblem {

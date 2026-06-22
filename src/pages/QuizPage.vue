@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, ChevronLeft, ChevronRight, List, Save, CheckCircle2, AlertTriangle, Download, Upload } from '@lucide/vue'
 import { useQuiz } from '@/composables/useQuiz'
@@ -57,6 +57,11 @@ const {
   exportSession,
   importSession,
 } = useQuiz(bankId)
+
+// Sync document title with bank title
+watch(title, (t) => {
+  if (t) document.title = `${t} — Quiz Stack`
+})
 
 const importError = ref<string | null>(null)
 const importSuccess = ref(false)

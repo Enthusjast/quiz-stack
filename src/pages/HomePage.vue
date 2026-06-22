@@ -98,7 +98,7 @@ watch([searchQuery, selectedCategory], () => {
         Quiz Stack
       </h1>
       <p class="mt-3 text-lg text-gray-500 dark:text-gray-400">
-        静态刷题网站 — 自主学习，随时随地练习
+        题栈-静态刷题网站
       </p>
     </div>
 
