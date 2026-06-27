@@ -1,9 +1,8 @@
 // Quiz Stack Service Worker — offline support
-const CACHE_NAME = 'quiz-stack-v1'
+const CACHE_NAME = 'quiz-stack-v2'
 
 // Assets to pre-cache on install
 const PRE_CACHE = [
-  '/',
   '/favicon.svg',
   '/manifest.json',
 ]
@@ -27,13 +26,13 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url)
 
-  // Network-first for question bank data (always fresh)
-  if (url.pathname.startsWith('/data/')) {
+  // Network-first for HTML and data (always fresh)
+  if (url.pathname === '/' || url.pathname.endsWith('.html') || url.pathname.startsWith('/data/')) {
     event.respondWith(networkFirst(event.request))
     return
   }
 
-  // Cache-first for static assets (app shell)
+  // Cache-first for static assets (JS, CSS, images, fonts)
   event.respondWith(cacheFirst(event.request))
 })
 
