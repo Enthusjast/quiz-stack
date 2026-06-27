@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import type { PracticeMode, CustomPracticeConfig } from '@/types/problem'
 import { PROBLEM_TYPE_LABELS } from '@/types/problem'
-import { X, ArrowLeft, Settings2 } from '@lucide/vue'
+import {
+  X,
+  ArrowLeft,
+  Settings2,
+  ListOrdered,
+  Shuffle,
+  FileText,
+} from '@lucide/vue'
 
-defineProps<{
+const props = defineProps<{
   show: boolean
 }>()
 
@@ -24,12 +31,67 @@ const enabledTypes = ref<Record<number, boolean>>({
   4: true,
 })
 const shuffleEnabled = ref(true)
+const panelDirection = ref<'forward' | 'backward'>('forward')
+const validationShake = ref(false)
+const backButtonRef = ref<HTMLButtonElement | null>(null)
+
+// ---- mode card definitions ----
+interface ModeCard {
+  mode: PracticeMode | 'custom'
+  icon: typeof ListOrdered
+  color: string
+  bgClass: string
+  title: string
+  description: string
+  action: () => void
+}
+
+const modeCards: ModeCard[] = [
+  {
+    mode: 'sequential',
+    icon: ListOrdered,
+    color: 'text-blue-600 dark:text-blue-400',
+    bgClass: 'bg-blue-100 dark:bg-blue-900/30',
+    title: '顺序练习',
+    description: '按照题库原始顺序逐题练习，选择题选项会随机打乱',
+    action: () => emit('confirm', 'sequential'),
+  },
+  {
+    mode: 'random',
+    icon: Shuffle,
+    color: 'text-purple-600 dark:text-purple-400',
+    bgClass: 'bg-purple-100 dark:bg-purple-900/30',
+    title: '乱序练习',
+    description: '题目和选项顺序完全随机，全面检验知识掌握',
+    action: () => emit('confirm', 'random'),
+  },
+  {
+    mode: 'mock-exam',
+    icon: FileText,
+    color: 'text-amber-600 dark:text-amber-400',
+    bgClass: 'bg-amber-100 dark:bg-amber-900/30',
+    title: '模拟考试',
+    description: '限时作答，交卷后统一判分，支持分题型计分',
+    action: () => emit('confirm', 'mock-exam'),
+  },
+  {
+    mode: 'custom',
+    icon: Settings2,
+    color: 'text-emerald-600 dark:text-emerald-400',
+    bgClass: 'bg-emerald-100 dark:bg-emerald-900/30',
+    title: '自定义练习',
+    description: '选择特定题型和乱序方式，量身定制练习内容',
+    action: openCustomPanel,
+  },
+]
 
 function openCustomPanel() {
+  panelDirection.value = 'forward'
   showCustomPanel.value = true
 }
 
 function closeCustomPanel() {
+  panelDirection.value = 'backward'
   showCustomPanel.value = false
 }
 
@@ -45,6 +107,11 @@ function confirmCustom() {
   if (types.length === 0) {
     // At least one type must be selected — enable single choice by default
     enabledTypes.value[1] = true
+    // Trigger shake animation for visual feedback
+    validationShake.value = true
+    setTimeout(() => {
+      validationShake.value = false
+    }, 500)
     return
   }
 
@@ -54,136 +121,283 @@ function confirmCustom() {
   })
   showCustomPanel.value = false
 }
+
+// Focus management: focus back button when custom panel opens
+watch(showCustomPanel, (val) => {
+  if (val) {
+    nextTick(() => {
+      backButtonRef.value?.focus()
+    })
+  }
+})
+
+// Reset custom panel state when the modal is closed
+watch(() => props.show, (val) => {
+  if (!val) {
+    // Delay reset to allow leave animation to complete
+    setTimeout(() => {
+      showCustomPanel.value = false
+    }, 250)
+  }
+})
 </script>
 
 <template>
   <Teleport to="body">
-    <div
-      v-if="show"
-      class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center"
-      @click.self="emit('close')"
-    >
+    <Transition name="sheet">
       <div
-        class="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-xl dark:bg-gray-900 sm:rounded-2xl sm:m-4"
-        @click.stop
+        v-if="show"
+        class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center"
+        @click.self="emit('close')"
       >
-        <!-- Main mode list -->
-        <template v-if="!showCustomPanel">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">选择练习模式</h2>
-            <button class="btn btn-ghost p-1" @click="emit('close')">
-              <X class="h-5 w-5" />
-            </button>
-          </div>
-
-          <div class="space-y-3">
-            <button
-              class="card w-full text-left cursor-pointer group"
-              @click="emit('confirm', 'sequential')"
-            >
-              <h3 class="font-semibold text-gray-900 dark:text-white">📋 顺序练习</h3>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">按照题库原始顺序逐题练习，选择题选项会随机打乱</p>
-            </button>
-
-            <button
-              class="card w-full text-left cursor-pointer group"
-              @click="emit('confirm', 'random')"
-            >
-              <h3 class="font-semibold text-gray-900 dark:text-white">🔀 乱序练习</h3>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">题目和选项顺序完全随机，全面检验知识掌握</p>
-            </button>
-
-            <button
-              class="card w-full text-left cursor-pointer group"
-              @click="emit('confirm', 'mock-exam')"
-            >
-              <h3 class="font-semibold text-gray-900 dark:text-white">📝 模拟考试</h3>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">限时作答，交卷后统一判分，支持分题型计分</p>
-            </button>
-
-            <button
-              class="card w-full text-left cursor-pointer group"
-              @click="openCustomPanel"
-            >
-              <h3 class="font-semibold text-gray-900 dark:text-white">
-                <Settings2 class="inline h-4 w-4 mr-1" />
-                自定义练习
-              </h3>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">选择特定题型和乱序方式，量身定制练习内容</p>
-            </button>
-          </div>
-        </template>
-
-        <!-- Custom practice sub-panel -->
-        <template v-else>
-          <div class="flex items-center gap-3 mb-4">
-            <button class="btn btn-ghost p-1" @click="closeCustomPanel">
-              <ArrowLeft class="h-5 w-5" />
-            </button>
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">自定义练习</h2>
-          </div>
-
-          <div class="space-y-5">
-            <!-- Type toggles -->
-            <div>
-              <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2.5">选择题型</p>
-              <div class="space-y-2">
-                <label
-                  v-for="type in [0, 1, 2, 3, 4]"
-                  :key="type"
-                  class="flex items-center gap-3 cursor-pointer rounded-lg border border-gray-200 px-4 py-2.5 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                  :class="enabledTypes[type] ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-950/30 dark:border-indigo-700' : ''"
-                >
-                  <div class="relative">
-                    <input
-                      type="checkbox"
-                      :checked="enabledTypes[type]"
-                      class="sr-only"
-                      @change="toggleType(type)"
-                    />
-                    <div
-                      class="flex h-5 w-5 items-center justify-center rounded border-2 transition-colors"
-                      :class="enabledTypes[type]
-                        ? 'border-indigo-500 bg-indigo-500 dark:border-indigo-400 dark:bg-indigo-400'
-                        : 'border-gray-300 dark:border-gray-600'"
-                    >
-                      <svg v-if="enabledTypes[type]" class="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
-                        <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                      </svg>
-                    </div>
-                  </div>
-                  <span class="text-sm text-gray-700 dark:text-gray-300">
-                    {{ PROBLEM_TYPE_LABELS[type] }}
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            <!-- Shuffle toggle -->
-            <div class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-2.5 dark:border-gray-700">
-              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">乱序出题</span>
+        <!-- Main mode list panel -->
+        <Transition name="panel-forward" mode="out-in">
+          <div
+            v-if="!showCustomPanel"
+            key="main"
+            class="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-xl dark:bg-slate-800 sm:rounded-2xl sm:m-4"
+            @click.stop
+          >
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-5">
+              <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                选择练习模式
+              </h2>
               <button
-                type="button"
-                role="switch"
-                :aria-checked="shuffleEnabled"
-                class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-                :class="shuffleEnabled ? 'bg-indigo-500' : 'bg-gray-200 dark:bg-gray-700'"
-                @click="shuffleEnabled = !shuffleEnabled"
+                class="btn btn-ghost h-9 w-9 p-0"
+                aria-label="关闭"
+                @click="emit('close')"
               >
-                <span
-                  class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200"
-                  :class="shuffleEnabled ? 'translate-x-5' : 'translate-x-0'"
-                />
+                <X class="h-5 w-5" />
               </button>
             </div>
 
-            <!-- Confirm -->
-            <button class="btn btn-primary w-full text-base py-2.5" @click="confirmCustom">
-              开始练习
-            </button>
+            <!-- Mode cards -->
+            <div class="space-y-3">
+              <button
+                v-for="card in modeCards"
+                :key="card.mode"
+                class="card w-full text-left cursor-pointer group
+                       active:scale-[0.985] transition-transform duration-150
+                       hover:border-blue-300 dark:hover:border-blue-700
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
+                @click="card.action"
+              >
+                <div class="flex items-start gap-3.5">
+                  <!-- Icon circle -->
+                  <div
+                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full
+                           transition-transform duration-200 group-hover:scale-110"
+                    :class="card.bgClass"
+                  >
+                    <component :is="card.icon" class="h-5 w-5" :class="card.color" />
+                  </div>
+                  <!-- Text -->
+                  <div class="flex-1 min-w-0">
+                    <h3 class="font-semibold text-slate-900 dark:text-slate-100 leading-6">
+                      {{ card.title }}
+                    </h3>
+                    <p class="mt-0.5 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                      {{ card.description }}
+                    </p>
+                  </div>
+                  <!-- Arrow hint -->
+                  <div class="mt-2 shrink-0 text-slate-300 dark:text-slate-600
+                              transition-all duration-200
+                              group-hover:text-slate-400 group-hover:translate-x-0.5
+                              dark:group-hover:text-slate-400">
+                    <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none">
+                      <path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
+              </button>
+            </div>
           </div>
-        </template>
+
+          <!-- Custom practice sub-panel -->
+          <div
+            v-else
+            key="custom"
+            class="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-xl dark:bg-slate-800 sm:rounded-2xl sm:m-4"
+            @click.stop
+          >
+            <!-- Header -->
+            <div class="flex items-center gap-3 mb-5">
+              <button
+                ref="backButtonRef"
+                class="btn btn-ghost h-9 w-9 shrink-0 p-0"
+                aria-label="返回"
+                @click="closeCustomPanel"
+              >
+                <ArrowLeft class="h-5 w-5" />
+              </button>
+              <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                自定义练习
+              </h2>
+            </div>
+
+            <div class="space-y-5">
+              <!-- Type toggles -->
+              <fieldset>
+                <legend class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2.5">
+                  选择题型（至少一种）
+                </legend>
+                <div
+                  class="space-y-2"
+                  :class="{ 'animate-shake': validationShake }"
+                >
+                  <label
+                    v-for="type in [0, 1, 2, 3, 4]"
+                    :key="type"
+                    class="flex items-center gap-3 cursor-pointer rounded-lg border px-4 py-2.5
+                           transition-all duration-200
+                           border-gray-200 hover:bg-gray-50
+                           dark:border-gray-700 dark:hover:bg-gray-800/50
+                           has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-blue-500 has-[:focus-visible]:ring-offset-2
+                           dark:has-[:focus-visible]:ring-offset-slate-800"
+                    :class="enabledTypes[type]
+                      ? 'bg-blue-50 border-blue-300 dark:bg-blue-950/30 dark:border-blue-700'
+                      : ''"
+                  >
+                    <div class="relative flex-shrink-0">
+                      <input
+                        type="checkbox"
+                        :checked="enabledTypes[type]"
+                        class="sr-only"
+                        @change="toggleType(type)"
+                      />
+                      <div
+                        class="flex h-5 w-5 items-center justify-center rounded
+                               border-2 transition-all duration-200"
+                        :class="enabledTypes[type]
+                          ? 'border-blue-500 bg-blue-500 dark:border-blue-400 dark:bg-blue-400 scale-100'
+                          : 'border-gray-300 dark:border-gray-600 scale-95'"
+                      >
+                        <svg
+                          v-if="enabledTypes[type]"
+                          class="h-3 w-3 text-white"
+                          viewBox="0 0 12 12"
+                          fill="none"
+                        >
+                          <path
+                            d="M2.5 6L5 8.5L9.5 3.5"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                    <span
+                      class="text-sm transition-colors duration-200"
+                      :class="enabledTypes[type]
+                        ? 'text-slate-900 font-medium dark:text-slate-100'
+                        : 'text-slate-600 dark:text-slate-400'"
+                    >
+                      {{ PROBLEM_TYPE_LABELS[type] }}
+                    </span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <!-- Shuffle toggle -->
+              <div
+                class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3
+                       dark:border-gray-700"
+              >
+                <span class="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {{ shuffleEnabled ? '乱序出题' : '顺序出题' }}
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  :aria-checked="shuffleEnabled"
+                  :aria-label="shuffleEnabled ? '切换为顺序出题' : '切换为乱序出题'"
+                  class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full
+                         border-2 border-transparent transition-colors duration-200
+                         focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
+                         focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
+                  :class="shuffleEnabled ? 'bg-blue-500 dark:bg-blue-400' : 'bg-gray-200 dark:bg-gray-600'"
+                  @click="shuffleEnabled = !shuffleEnabled"
+                  @keydown.space.prevent="shuffleEnabled = !shuffleEnabled"
+                  @keydown.enter.prevent="shuffleEnabled = !shuffleEnabled"
+                >
+                  <span
+                    class="pointer-events-none inline-block h-5 w-5 transform rounded-full
+                           bg-white shadow-sm ring-0 transition-transform duration-200 ease-out"
+                    :class="shuffleEnabled ? 'translate-x-5' : 'translate-x-0'"
+                  />
+                </button>
+              </div>
+
+              <!-- Minimum selection hint -->
+              <p
+                v-if="Object.values(enabledTypes).filter(Boolean).length === 1"
+                class="text-xs text-amber-600 dark:text-amber-400"
+              >
+                已选到最小数量，至少保留一种题型
+              </p>
+
+              <!-- Confirm button -->
+              <button
+                class="btn btn-primary w-full text-base py-2.5 active:scale-[0.98] transition-transform"
+                @click="confirmCustom"
+              >
+                开始练习
+              </button>
+            </div>
+          </div>
+        </Transition>
       </div>
-    </div>
+    </Transition>
   </Teleport>
 </template>
+
+<style scoped>
+/* Panel slide transition — forward (enter custom panel) */
+.panel-forward-enter-active {
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+.panel-forward-leave-active {
+  transition: opacity 150ms ease-in, transform 150ms ease-in;
+}
+.panel-forward-enter-from {
+  opacity: 0;
+  transform: translateX(32px);
+}
+.panel-forward-leave-to {
+  opacity: 0;
+  transform: translateX(-32px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-forward-enter-active,
+  .panel-forward-leave-active {
+    transition: opacity 100ms ease-out;
+  }
+  .panel-forward-enter-from,
+  .panel-forward-leave-to {
+    transform: none;
+  }
+}
+
+/* Shake animation for validation feedback */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+.animate-shake {
+  animation: shake 400ms ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-shake {
+    animation: none;
+  }
+}
+</style>
