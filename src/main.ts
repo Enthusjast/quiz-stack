@@ -4,10 +4,10 @@ import App from './App.vue'
 import router from './router'
 
 // Register service worker for PWA offline support
-if ('serviceWorker' in navigator) {
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // Swallow — SW registration is non-critical
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
+      // Service worker registration is non-critical.
     })
   })
 }
