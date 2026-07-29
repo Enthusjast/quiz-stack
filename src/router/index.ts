@@ -19,6 +19,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/WrongProblemsPage.vue'),
   },
   {
+    path: '/records',
+    name: 'records',
+    component: () => import('@/pages/RecordsPage.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/pages/NotFoundPage.vue'),
@@ -35,6 +40,8 @@ router.afterEach((to) => {
     document.title = 'Quiz Stack — 刷题自测'
   } else if (to.name === 'wrong-problems') {
     document.title = '错题本 — Quiz Stack'
+  } else if (to.name === 'records') {
+    document.title = '练习记录 — Quiz Stack'
   } else if (to.name === 'not-found') {
     document.title = '404 — Quiz Stack'
   }
