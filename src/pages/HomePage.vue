@@ -180,37 +180,14 @@ const visiblePages = computed(() => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl px-4 pb-20">
+  <div class="mx-auto w-full min-w-0 max-w-3xl overflow-x-clip px-4 pb-20">
     <!-- ===== Hero Section ===== -->
     <section class="relative overflow-hidden py-14 sm:py-20">
-      <!-- Decorative geometric background shapes -->
-      <div aria-hidden="true" class="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div
-          class="absolute -right-20 -top-16 h-72 w-72 rounded-full bg-gradient-to-br from-blue-400/15 to-violet-400/10 blur-3xl dark:from-blue-500/10 dark:to-violet-500/8"
-        />
-        <div
-          class="absolute -bottom-12 -left-16 h-64 w-64 rounded-full bg-gradient-to-tr from-amber-300/15 to-rose-300/10 blur-3xl dark:from-amber-500/8 dark:to-rose-500/6"
-        />
-        <div
-          class="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-violet-400/10 to-blue-400/10 blur-2xl dark:from-violet-500/6 dark:to-blue-500/6"
-        />
-        <!-- Geometric accent shapes -->
-        <div
-          class="absolute right-12 top-8 h-16 w-16 rotate-12 rounded-2xl border border-blue-300/30 bg-blue-400/10 dark:border-blue-500/20 dark:bg-blue-500/8"
-        />
-        <div
-          class="absolute bottom-16 left-10 h-10 w-10 -rotate-6 rounded-full bg-amber-400/20 dark:bg-amber-500/12"
-        />
-        <div
-          class="absolute right-1/4 top-1/3 h-6 w-6 rotate-45 rounded-sm bg-violet-400/25 dark:bg-violet-500/15"
-        />
-      </div>
-
       <!-- Hero content -->
       <div class="text-center">
         <!-- Title with gradient -->
         <h1
-          class="bg-gradient-to-r from-blue-600 via-violet-600 to-amber-500 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent sm:text-6xl lg:text-7xl"
+          class="hero-title text-5xl font-extrabold sm:text-6xl lg:text-7xl"
         >
           Quiz Stack
         </h1>
@@ -228,7 +205,7 @@ const visiblePages = computed(() => {
         <div
           v-for="i in 4"
           :key="'stat-skel-' + i"
-          class="animate-pulse rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800"
+          class="paper-surface paper-flat animate-pulse rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800"
         >
           <div class="mb-3 h-3 w-16 rounded-full bg-slate-200 dark:bg-slate-700" />
           <div class="h-8 w-16 rounded-lg bg-slate-300 dark:bg-slate-600" />
@@ -239,7 +216,7 @@ const visiblePages = computed(() => {
       <div
         v-for="i in 3"
         :key="'bank-skel-' + i"
-        class="animate-pulse rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800"
+        class="paper-surface paper-flat animate-pulse rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800"
       >
         <div class="flex items-start justify-between gap-4">
           <div class="flex-1 space-y-3">
@@ -260,7 +237,7 @@ const visiblePages = computed(() => {
     <!-- ===== Error State ===== -->
     <div
       v-else-if="error"
-      class="rounded-2xl border border-red-200 bg-red-50/80 p-10 text-center backdrop-blur-sm dark:border-red-800 dark:bg-red-950/20"
+      class="paper-feedback paper-feedback-error paper-flat rounded-2xl border border-red-200 bg-red-50/80 p-10 text-center backdrop-blur-sm dark:border-red-800 dark:bg-red-950/20"
     >
       <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-100 dark:bg-red-900/30">
         <AlertTriangle class="h-8 w-8 text-red-500 dark:text-red-400" />
@@ -268,7 +245,8 @@ const visiblePages = computed(() => {
       <h3 class="text-lg font-semibold text-red-700 dark:text-red-300">加载失败</h3>
       <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
       <button
-        class="btn btn-primary mt-6"
+        type="button"
+        class="btn btn-primary paper-gradient-primary paper-flat mt-6"
         @click="reloadPage()"
       >
         重新加载
@@ -278,7 +256,7 @@ const visiblePages = computed(() => {
     <!-- ===== Empty State ===== -->
     <div
       v-else-if="Object.keys(registry.banks).length === 0"
-      class="rounded-2xl border border-slate-200 bg-slate-50/80 p-10 text-center backdrop-blur-sm dark:border-slate-700 dark:bg-slate-800/50"
+      class="paper-surface-muted paper-flat rounded-2xl border border-slate-200 bg-slate-50/80 p-10 text-center backdrop-blur-sm dark:border-slate-700 dark:bg-slate-800/50"
     >
       <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-700">
         <PackageOpen class="h-8 w-8 text-slate-400 dark:text-slate-500" />
@@ -302,19 +280,8 @@ const visiblePages = computed(() => {
           <div
             v-for="card in statCards"
             :key="card.key"
-            class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:shadow-slate-900/30"
+            class="paper-surface paper-flat paper-no-lift group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:shadow-slate-900/30"
           >
-            <!-- Background gradient accent -->
-            <div
-              aria-hidden="true"
-              class="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full opacity-10 transition-opacity duration-300 group-hover:opacity-20"
-              :class="{
-                'bg-indigo-500': card.colorClass === 'stat-card-indigo',
-                'bg-emerald-500': card.colorClass === 'stat-card-green',
-                'bg-amber-500': card.colorClass === 'stat-card-amber',
-                'bg-violet-500': card.colorClass === 'stat-card-purple',
-              }"
-            />
             <!-- Icon container -->
             <div
               class="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110"
@@ -331,7 +298,7 @@ const visiblePages = computed(() => {
             <p class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ card.label }}</p>
             <!-- Value -->
             <p
-              class="mt-1 text-2xl font-extrabold tabular-nums tracking-tight text-slate-900 dark:text-white"
+              class="mt-1 text-2xl font-extrabold tabular-nums text-slate-900 dark:text-white"
               :class="{
                 'text-indigo-700 dark:text-indigo-300': card.colorClass === 'stat-card-indigo',
                 'text-emerald-700 dark:text-emerald-300': card.colorClass === 'stat-card-green',
@@ -355,24 +322,23 @@ const visiblePages = computed(() => {
           </h2>
           <button
             v-if="stats.totalSessions > 3"
-            class="text-xs font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            type="button"
+            class="paper-flat text-xs font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
             @click="router.push({ name: 'records' })"
           >
             查看全部
           </button>
         </div>
         <div class="space-y-2">
-          <div
+          <button
             v-for="rec in stats.recentRecords"
             :key="rec.id"
-            class="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:shadow-slate-900/20"
-            role="button"
-            tabindex="0"
-            @click="router.push({ name: 'quiz', params: { bankId: rec.bankId } })"
-            @keydown.enter="router.push({ name: 'quiz', params: { bankId: rec.bankId } })"
+            type="button"
+            class="paper-surface paper-flat paper-no-lift group flex w-full min-w-0 items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus-visible:border-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:shadow-slate-900/20"
+            @click="router.push({ name: 'records', query: { record: rec.id } })"
           >
             <!-- Mode icon -->
-            <div
+            <span
               class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors"
               :class="{
                 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400': rec.mode === 'sequential',
@@ -383,20 +349,20 @@ const visiblePages = computed(() => {
               }"
             >
               <component :is="modeIconMap[rec.mode] ?? ListOrdered" class="h-4 w-4" />
-            </div>
+            </span>
             <!-- Info -->
-            <div class="flex-1 min-w-0">
-              <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm font-semibold text-slate-900 dark:text-white">
                 {{ rec.bankTitle }}
-              </p>
-              <p class="mt-0.5 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              </span>
+              <span class="mt-0.5 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <span>{{ modeLabelMap[rec.mode] ?? rec.mode }}</span>
                 <span aria-hidden="true">&middot;</span>
                 <span>{{ formatRelativeTime(rec.createdAt) }}</span>
-              </p>
-            </div>
+              </span>
+            </span>
             <!-- Score -->
-            <div class="shrink-0 text-right">
+            <span class="shrink-0 text-right">
               <span
                 class="text-lg font-bold tabular-nums"
                 :class="{
@@ -407,8 +373,8 @@ const visiblePages = computed(() => {
               >
                 {{ rec.correctCount }}/{{ rec.totalQuestions }}
               </span>
-            </div>
-          </div>
+            </span>
+          </button>
         </div>
       </section>
 
@@ -422,7 +388,7 @@ const visiblePages = computed(() => {
             :value="searchQuery"
             @input="searchQuery = ($event.target as HTMLInputElement).value"
             placeholder="搜索题库名称..."
-            class="w-full rounded-xl border-2 border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500 dark:focus:border-blue-400 dark:focus:ring-blue-400/15"
+            class="paper-control paper-flat w-full rounded-xl border-2 border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500 dark:focus:border-blue-400 dark:focus:ring-blue-400/15"
           />
         </div>
         <CategoryTags
@@ -467,7 +433,7 @@ const visiblePages = computed(() => {
       </TransitionGroup>
 
       <!-- Empty search results -->
-      <div v-if="filteredBanks.length === 0" class="py-20 text-center">
+      <div v-if="filteredBanks.length === 0" class="paper-surface-muted paper-flat rounded-xl py-20 text-center">
         <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800">
           <BookOpen class="h-8 w-8 text-slate-300 dark:text-slate-600" />
         </div>
@@ -475,7 +441,8 @@ const visiblePages = computed(() => {
           没有找到匹配的题库
         </p>
         <button
-          class="mt-3 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+          type="button"
+          class="paper-flat mt-3 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
           @click="searchQuery = ''; selectedCategory = ''"
         >
           清除筛选条件
@@ -485,12 +452,13 @@ const visiblePages = computed(() => {
       <!-- Pagination -->
       <nav
         v-if="totalPages > 1"
-        class="mt-10 flex items-center justify-center gap-1"
+        class="mt-10 flex max-w-full flex-wrap items-center justify-center gap-1"
         aria-label="分页导航"
       >
         <!-- Previous -->
         <button
-          class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-all duration-200 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+          type="button"
+          class="paper-control paper-flat paper-no-lift inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-all duration-200 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           :disabled="bankPage <= 1"
           aria-label="上一页"
           @click="bankPage--"
@@ -501,7 +469,8 @@ const visiblePages = computed(() => {
         <!-- First page + ellipsis -->
         <template v-if="visiblePages[0] > 1">
           <button
-            class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+            type="button"
+            class="paper-control paper-flat paper-no-lift inline-flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
             @click="bankPage = 1"
           >
             1
@@ -519,11 +488,12 @@ const visiblePages = computed(() => {
         <button
           v-for="p in visiblePages"
           :key="p"
-          class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition-all duration-200"
+          type="button"
+          class="paper-flat paper-no-lift inline-flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition-all duration-200"
           :class="
             p === bankPage
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25 dark:bg-blue-500 dark:shadow-blue-500/25'
-              : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+              ? 'paper-gradient-primary bg-blue-600 text-white shadow-md shadow-blue-600/25 dark:bg-blue-500 dark:shadow-blue-500/25'
+              : 'paper-control text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
           "
           :aria-label="`第 ${p} 页`"
           :aria-current="p === bankPage ? 'page' : undefined"
@@ -542,7 +512,8 @@ const visiblePages = computed(() => {
             &hellip;
           </span>
           <button
-            class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+            type="button"
+            class="paper-control paper-flat paper-no-lift inline-flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
             @click="bankPage = totalPages"
           >
             {{ totalPages }}
@@ -551,7 +522,8 @@ const visiblePages = computed(() => {
 
         <!-- Next -->
         <button
-          class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-all duration-200 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+          type="button"
+          class="paper-control paper-flat paper-no-lift inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-all duration-200 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           :disabled="bankPage >= totalPages"
           aria-label="下一页"
           @click="bankPage++"

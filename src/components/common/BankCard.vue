@@ -25,12 +25,13 @@ const ariaLabel = computed(() => {
 
 <template>
   <button
+    type="button"
     :aria-label="ariaLabel"
-    class="card-bank group relative w-full text-left isolate"
+    class="card-bank paper-surface paper-flat paper-no-lift group relative isolate min-w-0 max-w-full overflow-hidden text-left"
     @click="emit('select', bankId)"
   >
     <!-- Card body -->
-    <div class="flex items-start gap-4">
+    <div class="flex min-w-0 items-start gap-3 sm:gap-4">
       <!-- Icon column -->
       <div
         class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 transition-colors duration-200 group-hover:bg-primary-100 group-active:scale-95 dark:bg-primary-950/60 dark:text-primary-400 dark:group-hover:bg-primary-900/60"
@@ -41,16 +42,16 @@ const ariaLabel = computed(() => {
       <!-- Main content -->
       <div class="flex-1 min-w-0">
         <!-- Title row -->
-        <div class="flex items-center gap-2 mb-1.5">
+        <div class="mb-1.5 flex min-w-0 flex-wrap items-center gap-2">
           <h3
-            class="text-base font-semibold leading-tight text-slate-900 transition-colors duration-200 group-hover:text-primary-700 dark:text-slate-100 dark:group-hover:text-primary-400 truncate"
+            class="min-w-0 basis-full break-words text-base font-semibold leading-tight text-slate-900 transition-colors duration-200 group-hover:text-primary-700 dark:text-slate-100 dark:group-hover:text-primary-400"
           >
             {{ bank.title }}
           </h3>
           <!-- Inline badges -->
           <span
             v-if="hasProgress"
-            class="inline-flex items-center gap-1 shrink-0 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200/60 transition-colors duration-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800/50"
+            class="inline-flex max-w-full shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200/60 transition-colors duration-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800/50"
             :title="`${progressCount} 个练习模式有进度`"
           >
             <Clock class="h-3 w-3" />
@@ -58,7 +59,7 @@ const ariaLabel = computed(() => {
           </span>
           <span
             v-if="bank.new"
-            class="inline-flex items-center gap-1 shrink-0 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-200/60 transition-colors duration-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800/50"
+            class="inline-flex max-w-full shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-200/60 transition-colors duration-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800/50"
           >
             <Sparkles class="h-3 w-3" />
             <span>NEW</span>
@@ -70,10 +71,10 @@ const ariaLabel = computed(() => {
           <span
             v-for="cat in bank.categories"
             :key="cat"
-            class="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 transition-colors duration-200 group-hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:group-hover:bg-slate-700"
+            class="inline-flex min-w-0 max-w-full items-center gap-1 whitespace-normal break-words rounded-md bg-slate-100 px-2 py-0.5 text-left text-xs font-medium text-slate-600 transition-colors duration-200 group-hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:group-hover:bg-slate-700"
           >
-            <span class="h-1 w-1 rounded-full bg-primary-400 dark:bg-primary-500" />
-            {{ cat }}
+            <span class="h-1 w-1 shrink-0 rounded-full bg-primary-400 dark:bg-primary-500" />
+            <span class="min-w-0 break-all">{{ cat }}</span>
           </span>
         </div>
       </div>
@@ -95,7 +96,7 @@ const ariaLabel = computed(() => {
       class="progress-track mt-4 h-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
     >
       <div
-        class="progress-fill h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-500 ease-out dark:from-emerald-500 dark:to-emerald-400"
+        class="progress-fill paper-gradient-success h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-500 ease-out dark:from-emerald-500 dark:to-emerald-400"
         :style="{ width: '100%' }"
       />
     </div>
@@ -104,7 +105,7 @@ const ariaLabel = computed(() => {
 
 <style scoped>
 .card-bank {
-  @apply w-full rounded-xl border border-slate-200 bg-white p-5 shadow-sm;
+  @apply w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5;
   @apply transition-all duration-200 ease-out;
   @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white;
   @apply dark:border-slate-700/80 dark:bg-slate-800/90 dark:focus-visible:ring-offset-slate-900;

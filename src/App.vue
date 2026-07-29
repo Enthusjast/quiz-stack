@@ -1,16 +1,29 @@
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted } from 'vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
 
 // Dynamically update theme-color meta tag based on dark/light mode
-const themeObserver = new MutationObserver(() => {
+let themeObserver: MutationObserver | null = null
+
+function syncThemeColor() {
   const isDark = document.documentElement.classList.contains('dark')
   const metaLight = document.getElementById('theme-color-meta') as HTMLMetaElement | null
   const metaDark = document.getElementById('theme-color-meta-dark') as HTMLMetaElement | null
   if (metaLight) metaLight.media = isDark ? '(max-width: 0px)' : ''
   if (metaDark) metaDark.media = isDark ? '' : '(max-width: 0px)'
+}
+
+onMounted(() => {
+  themeObserver = new MutationObserver(syncThemeColor)
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+  syncThemeColor()
 })
-themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+
+onBeforeUnmount(() => {
+  themeObserver?.disconnect()
+  themeObserver = null
+})
 </script>
 
 <template>
