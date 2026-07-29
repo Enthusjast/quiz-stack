@@ -12,39 +12,22 @@ export function getItem<T>(key: string, fallback: T): T {
   }
 }
 
-export function setItem<T>(key: string, value: T): void {
+export function setItem<T>(key: string, value: T): boolean {
   try {
     localStorage.setItem(key, JSON.stringify(value))
+    return true
   } catch (e) {
     console.warn(`[quiz-stack] Failed to save "${key}" to localStorage:`, e)
+    return false
   }
 }
 
-export function removeItem(key: string): void {
+export function removeItem(key: string): boolean {
   try {
     localStorage.removeItem(key)
+    return true
   } catch (e) {
     console.warn(`[quiz-stack] Failed to remove "${key}" from localStorage:`, e)
-  }
-}
-
-/** Array-specific helper: append and deduplicate by key function */
-export function appendUnique<T>(arr: T[], item: T, keyFn: (item: T) => string): T[] {
-  const key = keyFn(item)
-  if (arr.some((existing) => keyFn(existing) === key)) {
-    return arr
-  }
-  return [...arr, item]
-}
-
-/** Verify localStorage is actually writable. Returns false if storage is unavailable. */
-export function probeStorage(): boolean {
-  const testKey = '__quiz_storage_test__'
-  try {
-    localStorage.setItem(testKey, '1')
-    localStorage.removeItem(testKey)
-    return true
-  } catch {
     return false
   }
 }

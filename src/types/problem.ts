@@ -3,6 +3,17 @@
 // So existing question bank files can be used without changes.
 // ============================================================
 
+/** 热身题 — an acknowledgement question that is always awarded. */
+export type WarmupProblem = {
+  type: 0
+  content: string
+  /** Optional choices for legacy banks that render warmups as a single choice. */
+  choices?: string[]
+  /** Optional reference answer. It does not affect the awarded result. */
+  answer?: number | string
+  hint?: string
+}
+
 /** 单选题 — choose one correct answer from choices */
 export type SingleChoiceProblem = {
   type: 1
@@ -40,6 +51,7 @@ export type TrueFalseProblem = {
 
 /** Discriminated union of all problem types */
 export type Problem =
+  | WarmupProblem
   | SingleChoiceProblem
   | MultiChoiceProblem
   | FillInBlankProblem
@@ -83,9 +95,9 @@ export type PracticeMode =
   | 'mock-exam'
   | 'custom-practice'
 
-/** Custom practice configuration (type 1-4 filter + shuffle toggle) */
+/** Custom practice configuration (type 0-4 filter + shuffle toggle) */
 export interface CustomPracticeConfig {
-  /** Problem types to include (1=单选, 2=多选, 3=填空, 4=判断) */
+  /** Problem types to include (0=热身, 1=单选, 2=多选, 3=填空, 4=判断) */
   enabledTypes: number[]
   /** Whether to shuffle question order */
   shuffle: boolean
@@ -93,6 +105,8 @@ export interface CustomPracticeConfig {
 
 /** Per-section score breakdown for mock exam result display */
 export interface MockExamSection {
+  /** Numeric problem type represented by this section. */
+  problemType: number
   /** Type label (e.g. "单选题") */
   typeLabel: string
   /** Number of problems in this section */
@@ -107,21 +121,36 @@ export interface MockExamSection {
 
 /**
  * Problem state:
- *   -1 = re-submitted (transient, used internally)
  *    0 = unanswered
  *    1 = answered but not graded (mock exam only)
  *    2 = correct
  *    3 = wrong
  */
-export type ProblemState = -1 | 0 | 1 | 2 | 3
+export type ProblemState = 0 | 1 | 2 | 3
 
-/** User's answer: can be a single choice index (number), multiple indices (number[]), or text (string) */
-export type UserAnswer = number | number[] | string
+/** User's answer; null represents an unanswered problem. */
+export type UserAnswer = number | number[] | string | null
+
+/** Current persisted session format. */
+export const QUIZ_SNAPSHOT_VERSION = 2 as const
+
+/** Value submitted by acknowledgement-style type 0 questions. */
+export const WARMUP_CONFIRMATION_ANSWER = '__warmup_confirmed__'
 
 /** Persisted quiz session snapshot (goes into localStorage) */
 export interface QuizSnapshot {
+  schemaVersion: typeof QUIZ_SNAPSHOT_VERSION
   bankId: string
   mode: PracticeMode
+  /** Stable identifier for this attempt, used for idempotent records. */
+  sessionId: string
+  /** Per-attempt seed used for question and choice order. */
+  sessionSeed: number
+  /** Digest of the ordered source questions. */
+  bankDigest: string
+  /** Stable IDs in the exact displayed order. */
+  problemIds: string[]
+  /** Source indices retained for diagnostics/backward export tooling. */
   problemIndices: number[]
   currentIndex: number
   answers: UserAnswer[]
@@ -129,11 +158,17 @@ export interface QuizSnapshot {
   startTime: number
   elapsedSeconds: number
   /** Retry count per problem */
-  retryCounts?: number[]
+  retryCounts: number[]
   /** Unix timestamp of last save */
   savedAt?: number
   /** Custom practice config (for custom-practice mode) */
   customConfig?: CustomPracticeConfig
+  /** Whether a mock exam has been submitted and graded. */
+  examSubmitted: boolean
+  /** Whether this attempt has reached its terminal result screen. */
+  completed: boolean
+  /** Stable record ID once a completion record has been created. */
+  completionRecordId?: string
 }
 
 /** Label for each problem type */
@@ -150,6 +185,10 @@ export const CHOICE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as const
 
 /** A problem prepared for display (choices shuffled, answer remapped) */
 export interface PreparedProblem {
+  /** Stable full-content ID, disambiguated for duplicate occurrences. */
+  id: string
+  /** Index in the source collection used to build this session. */
+  sourceIndex: number
   original: Problem
   shuffledChoices: string[]
   mappedAnswer: number | number[] | string
