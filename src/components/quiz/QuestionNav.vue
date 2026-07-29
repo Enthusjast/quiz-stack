@@ -24,21 +24,9 @@ interface StateVariant {
   dot: string
   hoverBg: string
   hoverBorder: string
-  bar: string // color segment in section progress bar
 }
 
 const stateVariants: Record<string, StateVariant> = {
-  '-1': {
-    label: '标记',
-    bg: 'bg-amber-50 dark:bg-amber-950/40',
-    text: 'text-amber-700 dark:text-amber-300',
-    border: 'border-amber-300 dark:border-amber-700/60',
-    ring: 'ring-amber-400 dark:ring-amber-500',
-    dot: 'bg-amber-400',
-    hoverBg: 'hover:bg-amber-100 dark:hover:bg-amber-900/50',
-    hoverBorder: 'hover:border-amber-400 dark:hover:border-amber-600',
-    bar: 'bg-amber-400',
-  },
   '0': {
     label: '未答',
     bg: 'bg-white dark:bg-slate-800/70',
@@ -48,7 +36,6 @@ const stateVariants: Record<string, StateVariant> = {
     dot: 'bg-slate-300 dark:bg-slate-600',
     hoverBg: 'hover:bg-slate-50 dark:hover:bg-slate-700/80',
     hoverBorder: 'hover:border-slate-300 dark:hover:border-slate-600',
-    bar: 'bg-slate-300 dark:bg-slate-600',
   },
   '1': {
     label: '已答',
@@ -59,7 +46,6 @@ const stateVariants: Record<string, StateVariant> = {
     dot: 'bg-blue-400',
     hoverBg: 'hover:bg-blue-100 dark:hover:bg-blue-900/50',
     hoverBorder: 'hover:border-blue-400 dark:hover:border-blue-600',
-    bar: 'bg-blue-400',
   },
   '2': {
     label: '正确',
@@ -70,7 +56,6 @@ const stateVariants: Record<string, StateVariant> = {
     dot: 'bg-emerald-400',
     hoverBg: 'hover:bg-emerald-100 dark:hover:bg-emerald-900/50',
     hoverBorder: 'hover:border-emerald-400 dark:hover:border-emerald-600',
-    bar: 'bg-emerald-400',
   },
   '3': {
     label: '错误',
@@ -81,7 +66,6 @@ const stateVariants: Record<string, StateVariant> = {
     dot: 'bg-red-400',
     hoverBg: 'hover:bg-red-100 dark:hover:bg-red-900/50',
     hoverBorder: 'hover:border-red-400 dark:hover:border-red-600',
-    bar: 'bg-red-400',
   },
 }
 
@@ -137,9 +121,8 @@ const stats = computed(() => {
   const answered = props.problemStates.filter(s => s !== 0).length
   const correct = props.problemStates.filter(s => s === 2).length
   const wrong = props.problemStates.filter(s => s === 3).length
-  const marked = props.problemStates.filter(s => s === -1).length
   const pending = props.problemStates.filter(s => s === 1).length
-  return { total, answered, correct, wrong, marked, pending }
+  return { total, answered, correct, wrong, pending }
 })
 
 // ── Legend ──────────────────────────────────────────────────────
@@ -149,26 +132,31 @@ const legendItems: { state: ProblemState }[] = [
   { state: 1 },
   { state: 2 },
   { state: 3 },
-  { state: -1 },
 ]
 
 // ── Button classes ──────────────────────────────────────────────
 
 /** Adjust button size + grid columns based on total question count */
-const gridCols = computed(() => {
+const gridColumnCount = computed(() => {
   const n = props.problemStates.length
-  if (n <= 30) return 'grid-cols-5'
-  if (n <= 80) return 'grid-cols-6'
-  if (n <= 200) return 'grid-cols-7'
-  return 'grid-cols-8'
+  if (n <= 30) return 5
+  if (n <= 80) return 6
+  if (n <= 200) return 7
+  return 8
 })
+
+const gridStyle = computed(() => ({
+  gridTemplateColumns: `repeat(${gridColumnCount.value}, minmax(0, 1fr))`,
+}))
+
+const gridGapClass = computed(() => props.problemStates.length > 200 ? 'gap-1.5' : 'gap-2')
 
 const btnSize = computed(() => {
   const n = props.problemStates.length
-  if (n <= 30) return 'size-9 text-sm'
-  if (n <= 80) return 'size-8 text-xs'
-  if (n <= 300) return 'size-7 text-xs'
-  return 'size-6 text-[10px]'
+  if (n <= 30) return 'aspect-square w-full max-w-9 text-sm'
+  if (n <= 80) return 'aspect-square w-full max-w-8 text-xs'
+  if (n <= 300) return 'aspect-square w-full max-w-7 text-xs'
+  return 'aspect-square w-full max-w-6 text-[10px]'
 })
 
 function btnClasses(idx: number): string[] {
@@ -178,13 +166,14 @@ function btnClasses(idx: number): string[] {
 
   const classes = [
     // Base — sized dynamically via btnSize
-    'flex items-center justify-center rounded-lg font-semibold font-mono',
-    'border transition-all duration-200 ease-out',
+    'flex min-w-0 items-center justify-center justify-self-center rounded-lg font-semibold font-mono',
+    'paper-flat paper-no-lift',
+    'border transition-colors duration-200 ease-out',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1',
     // State colors
     v.bg, v.text, v.border,
     // Hover
-    v.hoverBg, v.hoverBorder, 'hover:scale-105 hover:shadow-md',
+    v.hoverBg, v.hoverBorder, 'hover:shadow-md',
     // Dynamic size
     btnSize.value,
   ]
@@ -192,7 +181,7 @@ function btnClasses(idx: number): string[] {
   if (isCurrent) {
     classes.push(
       'ring-2 ring-offset-1 dark:ring-offset-slate-900',
-      'scale-110 shadow-lg',
+      'shadow-lg',
       v.ring,
     )
   }
@@ -260,22 +249,18 @@ function btnAriaLabel(idx: number): string {
     <!-- ── Simple grid ─────────────────────────────────────────── -->
     <nav
       v-if="!hasSections"
-      class="rounded-2xl border border-slate-200/60 bg-white/60 p-5 shadow-sm backdrop-blur-sm dark:border-slate-700/40 dark:bg-slate-800/50"
+      class="paper-surface paper-flat rounded-2xl border border-slate-200/60 bg-white/60 p-4 shadow-sm backdrop-blur-sm dark:border-slate-700/40 dark:bg-slate-800/50"
       aria-label="题目导航"
     >
-      <div class="grid gap-2" :class="gridCols">
+      <div class="grid" :class="gridGapClass" :style="gridStyle">
         <button
           v-for="(_state, idx) in problemStates"
           :key="idx"
+          type="button"
           @click="emit('goTo', idx)"
           :class="btnClasses(idx)"
           :title="`第 ${idx + 1} 题`"
           :aria-label="btnAriaLabel(idx)"
-          :style="{
-            animationDelay: `${idx * 20}ms`,
-            animationFillMode: 'both',
-          }"
-          class="animate-fade-in"
         >
           {{ idx + 1 }}
         </button>
@@ -287,7 +272,7 @@ function btnAriaLabel(idx: number): string {
       <div
         v-for="(section, si) in examSections"
         :key="si"
-        class="animate-slide-up rounded-2xl border bg-white/60 p-5 shadow-sm backdrop-blur-sm transition-colors duration-300 dark:bg-slate-800/50"
+        class="paper-surface paper-flat animate-slide-up rounded-2xl border bg-white/60 p-4 shadow-sm backdrop-blur-sm transition-colors duration-300 dark:bg-slate-800/50"
         :class="[
           si === currentSectionIndex
             ? 'border-blue-300/80 dark:border-blue-600/60'
@@ -350,20 +335,16 @@ function btnAriaLabel(idx: number): string {
         </p>
 
         <!-- Question button grid -->
-        <div class="grid gap-2" :class="gridCols">
+        <div class="grid" :class="gridGapClass" :style="gridStyle">
           <button
             v-for="j in section.count"
             :key="j"
+            type="button"
             :data-idx="sectionHeaders[si].atIndex + j - 1"
             @click="emit('goTo', sectionHeaders[si].atIndex + j - 1)"
             :class="btnClasses(sectionHeaders[si].atIndex + j - 1)"
             :title="`第 ${sectionHeaders[si].atIndex + j} 题`"
             :aria-label="btnAriaLabel(sectionHeaders[si].atIndex + j - 1)"
-            :style="{
-              animationDelay: `${j * 25}ms`,
-              animationFillMode: 'both',
-            }"
-            class="animate-fade-in"
           >
             {{ sectionHeaders[si].atIndex + j }}
           </button>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
 import type { PreparedProblem, ProblemState, UserAnswer, MockExamSection } from '@/types/problem'
-import { CHOICE_LETTERS } from '@/types/problem'
+import { CHOICE_LETTERS, WARMUP_CONFIRMATION_ANSWER } from '@/types/problem'
 import { formatTime } from '@/utils/format'
 import {
   CircleCheckBig,
@@ -137,6 +137,7 @@ function toggleWrong(idx: number) {
 function formatAnswer(ans: UserAnswer | null | undefined, problem?: PreparedProblem): string {
   if (ans === null || ans === undefined) return '未作答'
 
+  if (problem?.original.type === 0 && ans === WARMUP_CONFIRMATION_ANSWER) return '已确认'
   if (problem?.original.type === 3) return String(ans)
 
   if (typeof ans === 'number') {
@@ -164,20 +165,16 @@ const avgTimePerQ = computed(() =>
 
 const hasWrong = computed(() => wrongItems.value.length > 0)
 
-const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3: '填空', 4: '判断' }
+const questionTypeLabel: Record<number, string> = { 0: '热身', 1: '单选', 2: '多选', 3: '填空', 4: '判断' }
 </script>
 
 <template>
-  <div class="space-y-8">
+  <div class="min-w-0 max-w-full space-y-8">
     <!-- ═══════ Score Card ═══════ -->
     <div
-      class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 p-8 text-white shadow-xl shadow-purple-500/20 transition-all duration-700 dark:shadow-purple-900/30"
+      class="paper-gradient-primary paper-flat paper-no-lift relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 p-8 text-white shadow-xl shadow-purple-500/20 transition-all duration-700 dark:shadow-purple-900/30"
       :class="cardVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'"
     >
-      <!-- Decorative blobs -->
-      <div class="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-      <div class="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-amber-400/20 blur-3xl" />
-
       <div class="relative flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-center sm:gap-10">
         <!-- SVG Ring chart -->
         <div class="relative flex shrink-0 items-center justify-center">
@@ -240,7 +237,7 @@ const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3:
 
           <!-- Tier badge -->
           <div
-            class="mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold backdrop-blur-sm"
+            class="paper-flat mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold backdrop-blur-sm"
             :class="[tier.bg, tier.border, tier.color]"
             style="border-width: 1px;"
           >
@@ -279,10 +276,10 @@ const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3:
       </div>
 
       <!-- Desktop table -->
-      <div class="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800/80 sm:block">
+      <div class="paper-surface paper-flat hidden overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800/80 sm:block">
         <table class="w-full text-sm">
           <thead>
-            <tr class="border-b border-gray-100 bg-gray-50/80 dark:border-gray-700 dark:bg-gray-800">
+            <tr class="paper-surface-muted border-b border-gray-100 bg-gray-50/80 dark:border-gray-700 dark:bg-gray-800">
               <th class="px-5 py-3 text-left font-semibold text-gray-600 dark:text-gray-400">题型</th>
               <th class="px-5 py-3 text-center font-semibold text-gray-600 dark:text-gray-400">题数</th>
               <th class="px-5 py-3 text-center font-semibold text-gray-600 dark:text-gray-400">分值/题</th>
@@ -295,7 +292,7 @@ const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3:
             <tr
               v-for="(section, idx) in examSections"
               :key="idx"
-              class="border-t border-gray-100 transition-colors hover:bg-gray-50/50 dark:border-gray-700/50 dark:hover:bg-gray-750/40"
+              class="border-t border-gray-100 transition-colors hover:bg-gray-50/50 dark:border-gray-700/50 dark:hover:bg-gray-700/40"
             >
               <td class="px-5 py-3.5">
                 <span class="font-semibold text-gray-900 dark:text-white">{{ section.typeLabel }}</span>
@@ -313,9 +310,9 @@ const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3:
                     <div
                       class="h-full rounded-full transition-all duration-700 ease-out"
                       :class="section.count > 0 && section.correct === section.count
-                        ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
+                        ? 'paper-gradient-success bg-gradient-to-r from-emerald-400 to-emerald-500'
                         : section.correct > 0
-                          ? 'bg-gradient-to-r from-blue-400 to-indigo-500'
+                          ? 'paper-gradient-primary bg-gradient-to-r from-blue-400 to-indigo-500'
                           : 'bg-gray-300 dark:bg-gray-600'"
                       :style="{ width: section.count > 0 ? (section.correct / section.count * 100) + '%' : '0%' }"
                     />
@@ -343,7 +340,7 @@ const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3:
             </tr>
           </tbody>
           <tfoot>
-            <tr class="border-t-2 border-gray-200 bg-gray-50/80 dark:border-gray-600 dark:bg-gray-800">
+            <tr class="paper-surface-muted border-t-2 border-gray-200 bg-gray-50/80 dark:border-gray-600 dark:bg-gray-800">
               <td class="px-5 py-3.5 font-bold text-gray-900 dark:text-white">合计</td>
               <td class="px-5 py-3.5 text-center font-semibold text-gray-600 dark:text-gray-400 tabular-nums">
                 {{ examSections.reduce((s, sec) => s + sec.count, 0) }}
@@ -368,7 +365,7 @@ const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3:
         <div
           v-for="(section, idx) in examSections"
           :key="idx"
-          class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/80"
+          class="paper-surface paper-flat rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/80"
         >
           <div class="flex items-center justify-between mb-3">
             <span class="font-semibold text-gray-900 dark:text-white">{{ section.typeLabel }}</span>
@@ -385,8 +382,8 @@ const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3:
             <div
               class="h-full rounded-full transition-all duration-700 ease-out"
               :class="section.count > 0 && section.correct === section.count
-                ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
-                : 'bg-gradient-to-r from-blue-400 to-indigo-500'"
+                ? 'paper-gradient-success bg-gradient-to-r from-emerald-400 to-emerald-500'
+                : 'paper-gradient-primary bg-gradient-to-r from-blue-400 to-indigo-500'"
               :style="{ width: section.count > 0 ? (section.correct / section.count * 100) + '%' : '0%' }"
             />
           </div>
@@ -396,7 +393,7 @@ const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3:
           </div>
         </div>
         <!-- Mobile total -->
-        <div class="rounded-2xl border-2 border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-800 dark:bg-indigo-950/20">
+        <div class="paper-surface-muted paper-flat rounded-2xl border-2 border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-800 dark:bg-indigo-950/20">
           <div class="flex items-center justify-between">
             <span class="font-bold text-indigo-700 dark:text-indigo-300">合计</span>
             <span class="text-lg font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">
@@ -409,9 +406,9 @@ const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3:
       <!-- Perfect exam trophy -->
       <div
         v-if="isExamPerfect"
-        class="flex items-center justify-center gap-3 rounded-2xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 p-5 shadow-lg shadow-amber-200/50 dark:border-amber-700 dark:from-amber-950/40 dark:via-yellow-950/30 dark:to-amber-950/40 dark:shadow-amber-900/20"
+        class="paper-feedback paper-feedback-warning paper-flat flex items-center justify-center gap-3 rounded-2xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 p-5 shadow-lg shadow-amber-200/50 dark:border-amber-700 dark:from-amber-950/40 dark:via-yellow-950/30 dark:to-amber-950/40 dark:shadow-amber-900/20"
       >
-        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-amber-200 shadow-inner dark:bg-amber-800/60">
+        <div class="paper-flat flex h-12 w-12 items-center justify-center rounded-full bg-amber-200 shadow-inner dark:bg-amber-800/60">
           <Trophy class="h-6 w-6 text-amber-600 dark:text-amber-400" />
         </div>
         <div>
@@ -435,7 +432,7 @@ const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3:
         <div
           v-for="(r, idx) in wrongItems"
           :key="idx"
-          class="group rounded-2xl border border-red-200 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md dark:border-red-800/60 dark:bg-gray-800/80"
+          class="paper-surface paper-flat paper-no-lift group rounded-2xl border border-red-200 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md dark:border-red-800/60 dark:bg-gray-800/80"
           :style="cardVisible ? { animationDelay: idx * 60 + 'ms' } : undefined"
           :class="cardVisible ? 'animate-slide-up-in' : 'opacity-0 translate-y-3'"
         >
@@ -459,14 +456,14 @@ const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3:
 
               <!-- Answer comparison -->
               <div class="mt-3 space-y-2">
-                <div class="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 dark:bg-red-950/20">
+                <div class="paper-feedback paper-feedback-error paper-flat flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 dark:bg-red-950/20">
                   <X class="mt-0.5 h-4 w-4 shrink-0 text-red-500 dark:text-red-400" />
                   <div>
                     <span class="text-[10px] font-semibold uppercase text-red-400 dark:text-red-500">你的答案</span>
                     <p class="text-sm text-red-700 dark:text-red-300">{{ formatAnswer(r.answer, r.problem) }}</p>
                   </div>
                 </div>
-                <div class="flex items-start gap-2 rounded-lg bg-emerald-50 px-3 py-2 dark:bg-emerald-950/20">
+                <div class="paper-feedback paper-feedback-success paper-flat flex items-start gap-2 rounded-lg bg-emerald-50 px-3 py-2 dark:bg-emerald-950/20">
                   <Check class="mt-0.5 h-4 w-4 shrink-0 text-emerald-500 dark:text-emerald-400" />
                   <div>
                     <span class="text-[10px] font-semibold uppercase text-emerald-400 dark:text-emerald-500">正确答案</span>
@@ -480,7 +477,8 @@ const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3:
               <!-- Hint (expandable) -->
               <div v-if="r.problem.original.hint" class="mt-3">
                 <button
-                  class="flex w-full items-center gap-1.5 rounded-lg px-3 py-2 text-left text-xs font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                  type="button"
+                  class="paper-flat flex w-full items-center gap-1.5 rounded-lg px-3 py-2 text-left text-xs font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
                   @click="toggleWrong(idx)"
                 >
                   <Lightbulb class="h-3.5 w-3.5 shrink-0" />
@@ -496,7 +494,7 @@ const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3:
                 </button>
                 <div
                   v-if="expandedWrong[idx]"
-                  class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                  class="paper-feedback paper-feedback-warning paper-flat mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
                 >
                   {{ r.problem.original.hint }}
                 </div>
@@ -510,7 +508,7 @@ const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3:
     <!-- ═══════ All Correct Celebration ═══════ -->
     <div
       v-else
-      class="relative overflow-hidden rounded-3xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 p-8 text-center shadow-xl shadow-emerald-200/60 transition-all duration-500 dark:border-emerald-700 dark:from-emerald-950/40 dark:via-green-950/30 dark:to-teal-950/30 dark:shadow-emerald-900/20"
+      class="paper-feedback paper-feedback-success paper-flat paper-no-lift relative overflow-hidden rounded-3xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 p-8 text-center shadow-xl shadow-emerald-200/60 transition-all duration-500 dark:border-emerald-700 dark:from-emerald-950/40 dark:via-green-950/30 dark:to-teal-950/30 dark:shadow-emerald-900/20"
       :class="cardVisible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-6 opacity-0 scale-95'"
     >
       <!-- Decorative glyphs -->
@@ -520,7 +518,7 @@ const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3:
       <div class="pointer-events-none absolute bottom-4 right-6 text-3xl opacity-20 select-none">&#11088;</div>
 
       <div class="relative">
-        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-200 shadow-lg shadow-emerald-300/50 dark:bg-emerald-800/60 dark:shadow-emerald-900/30">
+        <div class="paper-flat mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-200 shadow-lg shadow-emerald-300/50 dark:bg-emerald-800/60 dark:shadow-emerald-900/30">
           <CircleCheckBig class="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
         </div>
         <p class="text-xl font-bold text-emerald-800 dark:text-emerald-300">全部正确！</p>
@@ -536,7 +534,8 @@ const questionTypeLabel: Record<number, string> = { 1: '单选', 2: '多选', 3:
     <!-- ═══════ Actions ═══════ -->
     <div class="flex flex-col items-center gap-3 pt-2 sm:flex-row sm:justify-center">
       <button
-        class="btn group rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 transition-all duration-300 hover:from-indigo-700 hover:to-purple-700 hover:shadow-xl hover:shadow-purple-500/30 active:scale-[0.97] dark:shadow-purple-700/20"
+        type="button"
+        class="btn paper-gradient-primary paper-flat paper-no-lift group rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 transition-all duration-300 hover:from-indigo-700 hover:to-purple-700 hover:shadow-xl hover:shadow-purple-500/30 active:scale-[0.97] dark:shadow-purple-700/20"
         @click="emit('reset')"
       >
         <RotateCcw class="h-4 w-4 transition-transform duration-300 group-hover:rotate-[-30deg]" />

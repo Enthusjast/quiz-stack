@@ -2,15 +2,15 @@
 import { ref, computed, watch } from 'vue'
 import { CheckCircle2, XCircle, Circle, Lightbulb, Send, RotateCcw } from '@lucide/vue'
 import type { PreparedProblem, UserAnswer, ProblemState } from '@/types/problem'
-import { PROBLEM_TYPE_LABELS, CHOICE_LETTERS } from '@/types/problem'
+import { CHOICE_LETTERS, PROBLEM_TYPE_LABELS, WARMUP_CONFIRMATION_ANSWER } from '@/types/problem'
 
 const props = defineProps<{
   problem: PreparedProblem
   problemIndex: number
   totalCount: number
   submitted: boolean
-  problemState: ProblemState   // -1|0|1|2|3
-  previousAnswer: UserAnswer   // previously submitted answer (for showing red/green)
+  problemState: ProblemState   // 0|1|2|3
+  previousAnswer: UserAnswer | null // previously submitted answer (for showing red/green)
   retryCount?: number          // how many times this question has been retried
 }>()
 
@@ -53,31 +53,51 @@ function restorePrevious() {
   }
 }
 
-watch(() => props.problemIndex, () => {
+watch([
+  () => props.problem,
+  () => props.problemIndex,
+  () => props.previousAnswer,
+  () => props.problemState,
+], () => {
   // Restore previous answer if in mock exam (state=1) or already submitted
   if (props.problemState === 1 || props.problemState >= 2) {
     restorePrevious()
   } else {
     resetLocal()
   }
+}, { immediate: true })
+
+const problemType = computed<number>(() => props.problem.original.type)
+const warmupType = computed(() => problemType.value === 0)
+const warmupChoiceType = computed(() => {
+  if (!warmupType.value || props.problem.shuffledChoices.length === 0) return false
+  const original = props.problem.original as { choices?: string[]; answer?: unknown }
+  return typeof original.answer === 'number'
+    || (typeof original.answer === 'string' && Boolean(original.choices?.includes(original.answer)))
 })
-// Initial render
-if (props.problemState === 1 || props.problemState >= 2) {
-  restorePrevious()
-} else {
-  resetLocal()
-}
+const warmupConfirmType = computed(() => warmupType.value && !warmupChoiceType.value)
 
 const singleChoiceType = computed(() =>
-  props.problem.original.type === 1 || props.problem.original.type === 4
+  problemType.value === 1
+  || problemType.value === 4
+  || warmupChoiceType.value
 )
 
-const multiChoiceType = computed(() => props.problem.original.type === 2)
-const fillType = computed(() => props.problem.original.type === 3)
+const multiChoiceType = computed(() => problemType.value === 2)
+const fillType = computed(() => problemType.value === 3)
 
 const correctAnswer = computed(() => props.problem.mappedAnswer)
+const warmupReferenceAnswer = computed(() => {
+  if (!warmupConfirmType.value) return null
+  const answer = (props.problem.original as { answer?: unknown }).answer
+  return typeof answer === 'string' && answer.trim() ? answer : null
+})
 
 function isCorrectChoice(idx: number): boolean {
+  // Type 0 is always awarded; keep the selected legacy choice consistent with that result.
+  if (warmupType.value && props.problemState === 2 && isUserChoice(idx)) {
+    return true
+  }
   if (Array.isArray(correctAnswer.value)) {
     return correctAnswer.value.includes(idx)
   }
@@ -109,13 +129,13 @@ function choiceClass(idx: number): string {
     // Interactive selection (not yet submitted or exam mode)
     if (singleChoiceType.value) {
       return selectedSingle.value === idx
-        ? 'border-primary-400 bg-primary-50/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6),0_4px_12px_-2px_rgba(37,99,235,0.15)] dark:border-primary-500 dark:bg-primary-950/40 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_4px_12px_-2px_rgba(59,130,246,0.2)] ring-2 ring-primary-300/60 dark:ring-primary-700/60'
-        : 'border-slate-200/80 bg-white/80 backdrop-blur-sm shadow-[0_1px_2px_0_rgba(0,0,0,0.04),0_2px_8px_-1px_rgba(0,0,0,0.04)] dark:border-slate-700/60 dark:bg-slate-800/40 dark:shadow-[0_1px_2px_0_rgba(0,0,0,0.2),0_2px_8px_-1px_rgba(0,0,0,0.15)] hover:border-slate-300 hover:shadow-[0_2px_4px_0_rgba(0,0,0,0.06),0_4px_12px_-2px_rgba(0,0,0,0.06)] dark:hover:border-slate-600 dark:hover:shadow-[0_2px_4px_0_rgba(0,0,0,0.3),0_4px_12px_-2px_rgba(0,0,0,0.25)] hover:-translate-y-px'
+        ? 'paper-option paper-option-selected paper-selected-ring paper-flat paper-no-lift border-primary-400 bg-primary-50/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6),0_4px_12px_-2px_rgba(37,99,235,0.15)] dark:border-primary-500 dark:bg-primary-950/40 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_4px_12px_-2px_rgba(59,130,246,0.2)] ring-2 ring-primary-300/60 dark:ring-primary-700/60'
+        : 'paper-option paper-option-neutral paper-flat paper-no-lift border-slate-200/80 bg-white/80 backdrop-blur-sm shadow-[0_1px_2px_0_rgba(0,0,0,0.04),0_2px_8px_-1px_rgba(0,0,0,0.04)] dark:border-slate-700/60 dark:bg-slate-800/40 dark:shadow-[0_1px_2px_0_rgba(0,0,0,0.2),0_2px_8px_-1px_rgba(0,0,0,0.15)] hover:border-slate-300 hover:shadow-[0_2px_4px_0_rgba(0,0,0,0.06),0_4px_12px_-2px_rgba(0,0,0,0.06)] dark:hover:border-slate-600 dark:hover:shadow-[0_2px_4px_0_rgba(0,0,0,0.3),0_4px_12px_-2px_rgba(0,0,0,0.25)] hover:-translate-y-px'
     }
     if (multiChoiceType.value) {
       return selectedMulti.value.includes(idx)
-        ? 'border-primary-400 bg-primary-50/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6),0_4px_12px_-2px_rgba(37,99,235,0.15)] dark:border-primary-500 dark:bg-primary-950/40 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_4px_12px_-2px_rgba(59,130,246,0.2)] ring-2 ring-primary-300/60 dark:ring-primary-700/60'
-        : 'border-slate-200/80 bg-white/80 backdrop-blur-sm shadow-[0_1px_2px_0_rgba(0,0,0,0.04),0_2px_8px_-1px_rgba(0,0,0,0.04)] dark:border-slate-700/60 dark:bg-slate-800/40 dark:shadow-[0_1px_2px_0_rgba(0,0,0,0.2),0_2px_8px_-1px_rgba(0,0,0,0.15)] hover:border-slate-300 hover:shadow-[0_2px_4px_0_rgba(0,0,0,0.06),0_4px_12px_-2px_rgba(0,0,0,0.06)] dark:hover:border-slate-600 dark:hover:shadow-[0_2px_4px_0_rgba(0,0,0,0.3),0_4px_12px_-2px_rgba(0,0,0,0.25)] hover:-translate-y-px'
+        ? 'paper-option paper-option-selected paper-selected-ring paper-flat paper-no-lift border-primary-400 bg-primary-50/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6),0_4px_12px_-2px_rgba(37,99,235,0.15)] dark:border-primary-500 dark:bg-primary-950/40 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_4px_12px_-2px_rgba(59,130,246,0.2)] ring-2 ring-primary-300/60 dark:ring-primary-700/60'
+        : 'paper-option paper-option-neutral paper-flat paper-no-lift border-slate-200/80 bg-white/80 backdrop-blur-sm shadow-[0_1px_2px_0_rgba(0,0,0,0.04),0_2px_8px_-1px_rgba(0,0,0,0.04)] dark:border-slate-700/60 dark:bg-slate-800/40 dark:shadow-[0_1px_2px_0_rgba(0,0,0,0.2),0_2px_8px_-1px_rgba(0,0,0,0.15)] hover:border-slate-300 hover:shadow-[0_2px_4px_0_rgba(0,0,0,0.06),0_4px_12px_-2px_rgba(0,0,0,0.06)] dark:hover:border-slate-600 dark:hover:shadow-[0_2px_4px_0_rgba(0,0,0,0.3),0_4px_12px_-2px_rgba(0,0,0,0.25)] hover:-translate-y-px'
     }
     return ''
   }
@@ -123,18 +143,18 @@ function choiceClass(idx: number): string {
   // Submitted: show full-color backgrounds with soft glows
   if (isCorrectChoice(idx) && isUserChoice(idx)) {
     // Correct & chosen -- emerald glow
-    return 'border-emerald-400 bg-gradient-to-br from-emerald-50 to-emerald-100/50 text-emerald-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_2px_8px_-1px_rgba(16,185,129,0.15)] dark:border-emerald-600 dark:from-emerald-950/50 dark:to-emerald-950/30 dark:text-emerald-300 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_2px_8px_-1px_rgba(16,185,129,0.1)] font-medium'
+    return 'paper-option paper-feedback paper-feedback-success paper-flat paper-no-lift border-emerald-400 bg-gradient-to-br from-emerald-50 to-emerald-100/50 text-emerald-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_2px_8px_-1px_rgba(16,185,129,0.15)] dark:border-emerald-600 dark:from-emerald-950/50 dark:to-emerald-950/30 dark:text-emerald-300 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_2px_8px_-1px_rgba(16,185,129,0.1)] font-medium'
   }
   if (!isCorrectChoice(idx) && isUserChoice(idx)) {
     // Wrong & chosen -- red glow
-    return 'border-red-400 bg-gradient-to-br from-red-50 to-red-100/50 text-red-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_2px_8px_-1px_rgba(239,68,68,0.15)] dark:border-red-600 dark:from-red-950/50 dark:to-red-950/30 dark:text-red-300 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_2px_8px_-1px_rgba(239,68,68,0.1)]'
+    return 'paper-option paper-feedback paper-feedback-error paper-flat paper-no-lift border-red-400 bg-gradient-to-br from-red-50 to-red-100/50 text-red-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_2px_8px_-1px_rgba(239,68,68,0.15)] dark:border-red-600 dark:from-red-950/50 dark:to-red-950/30 dark:text-red-300 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_2px_8px_-1px_rgba(239,68,68,0.1)]'
   }
   if (isCorrectChoice(idx) && !isUserChoice(idx)) {
     // Correct but missed -- amber glow
-    return 'border-amber-400 bg-gradient-to-br from-amber-50 to-amber-100/50 text-amber-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_2px_8px_-1px_rgba(245,158,11,0.15)] dark:border-amber-600 dark:from-amber-950/50 dark:to-amber-950/30 dark:text-amber-300 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_2px_8px_-1px_rgba(245,158,11,0.1)] font-medium'
+    return 'paper-option paper-feedback paper-feedback-warning paper-flat paper-no-lift border-amber-400 bg-gradient-to-br from-amber-50 to-amber-100/50 text-amber-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_2px_8px_-1px_rgba(245,158,11,0.15)] dark:border-amber-600 dark:from-amber-950/50 dark:to-amber-950/30 dark:text-amber-300 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_2px_8px_-1px_rgba(245,158,11,0.1)] font-medium'
   }
   // Not chosen, not correct -- muted
-  return 'border-slate-200/60 dark:border-slate-700/40 bg-white/30 dark:bg-slate-800/20 opacity-50'
+  return 'paper-option paper-option-neutral paper-flat paper-no-lift border-slate-200/60 dark:border-slate-700/40 bg-white/30 dark:bg-slate-800/20 opacity-50'
 }
 
 /**
@@ -178,25 +198,10 @@ function handleSubmit() {
     return
   }
 
-  if (props.problemState === 1) {
-    // In mock exam, re-answering is allowed
-    let answer: UserAnswer
-    if (singleChoiceType.value) {
-      if (selectedSingle.value === null) return
-      answer = selectedSingle.value
-    } else if (multiChoiceType.value) {
-      if (selectedMulti.value.length === 0) return
-      answer = [...selectedMulti.value]
-    } else {
-      if (!fillText.value.trim()) return
-      answer = fillText.value.trim()
-    }
-    emit('submit', answer)
-    return
-  }
-
   let answer: UserAnswer
-  if (singleChoiceType.value) {
+  if (warmupConfirmType.value) {
+    answer = WARMUP_CONFIRMATION_ANSWER
+  } else if (singleChoiceType.value) {
     if (selectedSingle.value === null) return
     answer = selectedSingle.value
   } else if (multiChoiceType.value) {
@@ -208,6 +213,13 @@ function handleSubmit() {
   }
   emit('submit', answer)
 }
+
+const submitLabel = computed(() => {
+  if (props.submitted) return '重做'
+  if (props.problemState === 1) return '确认修改'
+  if (warmupConfirmType.value) return '确认完成'
+  return '提交答案'
+})
 </script>
 
 <template>
@@ -240,7 +252,7 @@ function handleSubmit() {
     <!-- Problem content -->
     <div class="relative">
       <!-- Subtle gradient accent bar -->
-      <div class="absolute left-0 top-1 bottom-1 w-1 rounded-full bg-gradient-to-b from-blue-500 via-purple-500 to-amber-400 opacity-70 dark:opacity-50" />
+      <div class="paper-gradient-primary absolute bottom-1 left-0 top-1 w-1 rounded-full bg-gradient-to-b from-blue-500 via-purple-500 to-amber-400 opacity-70 dark:opacity-50" />
       <p class="pl-5 text-lg font-semibold text-slate-900 leading-relaxed whitespace-pre-wrap dark:text-slate-100">
         {{ problem.original.content }}
       </p>
@@ -252,6 +264,7 @@ function handleSubmit() {
         <button
           v-for="(choice, idx) in problem.shuffledChoices"
           :key="idx"
+          type="button"
           @click="singleChoiceType ? selectSingle(idx) : toggleMulti(idx)"
           :disabled="submitted"
           :class="[
@@ -300,39 +313,42 @@ function handleSubmit() {
             type="text"
             :disabled="submitted"
             :placeholder="problemState === 1 ? '修改答案（多空用逗号分隔）' : '输入答案（多空用逗号分隔）'"
-            class="w-full rounded-xl border-2 border-slate-200/80 bg-white/80 px-5 py-3.5 text-[15px] text-slate-900 placeholder-slate-400 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.04)] backdrop-blur-sm transition-all duration-200 placeholder:text-sm focus:border-primary-400 focus:bg-white focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.04),0_2px_8px_-1px_rgba(37,99,235,0.12)] focus:outline-none focus:ring-4 focus:ring-primary-100/60 dark:border-slate-700/60 dark:bg-slate-800/40 dark:text-white dark:placeholder-slate-500 dark:shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] dark:focus:border-primary-500 dark:focus:bg-slate-800/60 dark:focus:ring-primary-900/40 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="paper-control paper-flat w-full rounded-xl border-2 border-slate-200/80 bg-white/80 px-5 py-3.5 text-[15px] text-slate-900 placeholder-slate-400 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.04)] backdrop-blur-sm transition-all duration-200 placeholder:text-sm focus:border-primary-400 focus:bg-white focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.04),0_2px_8px_-1px_rgba(37,99,235,0.12)] focus:outline-none focus:ring-4 focus:ring-primary-100/60 dark:border-slate-700/60 dark:bg-slate-800/40 dark:text-white dark:placeholder-slate-500 dark:shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] dark:focus:border-primary-500 dark:focus:bg-slate-800/60 dark:focus:ring-primary-900/40 disabled:opacity-50 disabled:cursor-not-allowed"
             @keyup.enter="handleSubmit"
           />
-          <!-- Submit hint -->
-          <span
-            v-if="!submitted"
-            class="absolute right-4 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 dark:text-slate-500 pointer-events-none select-none"
-          >
-            &#8629; 回车提交
-          </span>
         </div>
 
         <!-- Reveal correct answer after submission -->
-        <div v-if="submitted" class="animate-fade-in rounded-xl p-5"
-          :class="String(previousAnswer) === String(correctAnswer)
-            ? 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-300/60 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6),0_2px_8px_-1px_rgba(16,185,129,0.12)] dark:from-emerald-950/40 dark:to-emerald-950/20 dark:border-emerald-700/40 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]'
-            : 'bg-gradient-to-br from-red-50 to-red-100/50 border border-red-300/60 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6),0_2px_8px_-1px_rgba(239,68,68,0.12)] dark:from-red-950/40 dark:to-red-950/20 dark:border-red-700/40 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]'"
+        <div v-if="submitted" class="paper-feedback paper-flat animate-fade-in rounded-xl p-5"
+          :class="problemState === 2
+            ? 'paper-feedback-success bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-300/60 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6),0_2px_8px_-1px_rgba(16,185,129,0.12)] dark:from-emerald-950/40 dark:to-emerald-950/20 dark:border-emerald-700/40 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]'
+            : 'paper-feedback-error bg-gradient-to-br from-red-50 to-red-100/50 border border-red-300/60 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6),0_2px_8px_-1px_rgba(239,68,68,0.12)] dark:from-red-950/40 dark:to-red-950/20 dark:border-red-700/40 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]'"
         >
           <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">正确答案</p>
           <p class="mt-1 text-base font-semibold text-green-700 dark:text-green-400">{{ correctAnswer }}</p>
-          <p v-if="String(previousAnswer) !== String(correctAnswer)" class="mt-2 flex items-center gap-1.5 text-sm">
+          <p v-if="problemState !== 2" class="mt-2 flex items-center gap-1.5 text-sm">
             <XCircle class="h-4 w-4 text-red-400 dark:text-red-500" />
             <span class="text-red-600 dark:text-red-400">你的答案：</span>
             <span class="font-medium text-red-700 dark:text-red-300">{{ previousAnswer }}</span>
           </p>
         </div>
       </template>
+
+      <div
+        v-if="submitted && warmupReferenceAnswer"
+        class="paper-feedback paper-feedback-success paper-flat animate-fade-in rounded-xl border border-emerald-300/60 bg-emerald-50 p-5 dark:border-emerald-700/40 dark:bg-emerald-950/30"
+      >
+        <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">参考答案</p>
+        <p class="mt-1 whitespace-pre-wrap text-base font-semibold text-emerald-700 dark:text-emerald-300">
+          {{ warmupReferenceAnswer }}
+        </p>
+      </div>
     </div>
 
     <!-- Hint (shown after submission) -->
     <div
       v-if="submitted && problem.original.hint"
-      class="animate-fade-in rounded-xl border border-amber-300/60 bg-gradient-to-br from-amber-50 to-amber-100/50 p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6),0_2px_8px_-2px_rgba(245,158,11,0.1)] dark:border-amber-700/40 dark:from-amber-950/40 dark:to-amber-950/20 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]"
+      class="paper-feedback paper-feedback-warning paper-flat animate-fade-in rounded-xl border border-amber-300/60 bg-gradient-to-br from-amber-50 to-amber-100/50 p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6),0_2px_8px_-2px_rgba(245,158,11,0.1)] dark:border-amber-700/40 dark:from-amber-950/40 dark:to-amber-950/20 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]"
       style="animation-delay: 100ms; animation-fill-mode: both;"
     >
       <div class="flex items-start gap-2.5">
@@ -347,19 +363,21 @@ function handleSubmit() {
     <!-- Submit / Retry button -->
     <div class="flex justify-center pt-1">
       <button
+        type="button"
         @click="handleSubmit"
         :class="[
           'group relative inline-flex items-center justify-center gap-2 rounded-xl px-8 py-3 text-base font-semibold transition-all duration-200 ease-out',
+          'paper-flat paper-no-lift',
           'active:scale-[0.97] touch-manipulation select-none',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900',
           submitted
-            ? 'bg-gradient-to-b from-slate-100 to-slate-200/80 text-slate-700 shadow-[0_2px_6px_rgba(0,0,0,0.06),inset_0_1px_0_0_rgba(255,255,255,0.7)] hover:from-slate-200 hover:to-slate-300/80 hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] dark:from-slate-800 dark:to-slate-700/80 dark:text-slate-300 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] dark:hover:from-slate-700 dark:hover:to-slate-600/80 focus-visible:ring-slate-400'
-            : 'bg-gradient-to-b from-primary-500 to-primary-600 text-white shadow-[0_4px_16px_-2px_rgba(37,99,235,0.3),0_2px_4px_-1px_rgba(37,99,235,0.15),inset_0_1px_0_0_rgba(255,255,255,0.25)] hover:from-primary-600 hover:to-primary-700 hover:shadow-[0_6px_20px_-3px_rgba(37,99,235,0.35),0_3px_6px_-1px_rgba(37,99,235,0.2)] dark:from-primary-600 dark:to-primary-700 dark:shadow-[0_4px_16px_-2px_rgba(59,130,246,0.25),inset_0_1px_0_0_rgba(255,255,255,0.1)] dark:hover:from-primary-700 dark:hover:to-primary-800 focus-visible:ring-primary-500',
+            ? 'paper-surface-muted bg-gradient-to-b from-slate-100 to-slate-200/80 text-slate-700 shadow-[0_2px_6px_rgba(0,0,0,0.06),inset_0_1px_0_0_rgba(255,255,255,0.7)] hover:from-slate-200 hover:to-slate-300/80 hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] dark:from-slate-800 dark:to-slate-700/80 dark:text-slate-300 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] dark:hover:from-slate-700 dark:hover:to-slate-600/80 focus-visible:ring-slate-400'
+            : 'paper-gradient-primary bg-gradient-to-b from-primary-500 to-primary-600 text-white shadow-[0_4px_16px_-2px_rgba(37,99,235,0.3),0_2px_4px_-1px_rgba(37,99,235,0.15),inset_0_1px_0_0_rgba(255,255,255,0.25)] hover:from-primary-600 hover:to-primary-700 hover:shadow-[0_6px_20px_-3px_rgba(37,99,235,0.35),0_3px_6px_-1px_rgba(37,99,235,0.2)] dark:from-primary-600 dark:to-primary-700 dark:shadow-[0_4px_16px_-2px_rgba(59,130,246,0.25),inset_0_1px_0_0_rgba(255,255,255,0.1)] dark:hover:from-primary-700 dark:hover:to-primary-800 focus-visible:ring-primary-500',
         ]"
       >
         <Send v-if="!submitted" class="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-px group-hover:translate-x-px" />
         <RotateCcw v-else class="h-4 w-4 transition-transform duration-200 group-hover:rotate-[-30deg]" />
-        {{ submitted ? '重做' : problemState === 1 ? '确认修改' : '提交答案' }}
+        {{ submitLabel }}
       </button>
     </div>
   </div>

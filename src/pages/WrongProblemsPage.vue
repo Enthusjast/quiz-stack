@@ -1,19 +1,32 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, nextTick, watch } from 'vue'
 import { useWrongProblems } from '@/composables/useWrongProblems'
+import { WRONG_REVIEW_BANK_ID } from '@/composables/useQuiz'
 import { useRouter } from 'vue-router'
 import {
-  ArrowLeft, Trash2, Download, Upload, Search, FilterX, X,
+  ArrowLeft, Trash2, Download, Upload, Search, FilterX, X, Play,
   ListX, BookOpen, CheckCircle2, Hash, FileQuestion,
   LayoutList, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
 } from '@lucide/vue'
 import type { Problem } from '@/types/problem'
 import { PROBLEM_TYPE_LABELS, CHOICE_LETTERS } from '@/types/problem'
+import { problemFingerprint } from '@/utils/problem'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 
 const router = useRouter()
-const { wrongProblems, count, removeWrong, clearAll, exportJSON, importJSON } = useWrongProblems()
+const {
+  wrongProblems,
+  count,
+  removeWrong,
+  removeManyWrong,
+  clearAll,
+  exportJSON,
+  importJSON,
+} = useWrongProblems()
 const importMessage = ref<string | null>(null)
+const operationError = ref<string | null>(null)
+const pageRoot = ref<HTMLElement | null>(null)
+const wrongProblemsHeading = ref<HTMLElement | null>(null)
 
 // ---------------------------------------------------------------------------
 // Stats
@@ -60,48 +73,130 @@ const paged = computed(() => {
 // ---------------------------------------------------------------------------
 // Multi-select for batch delete
 // ---------------------------------------------------------------------------
-const selectedIndices = ref<Set<number>>(new Set())
+const selectedProblemIds = ref<Set<string>>(new Set())
 
-function toggleSelect(idx: number) {
-  const s = new Set(selectedIndices.value)
-  if (s.has(idx)) s.delete(idx)
-  else s.add(idx)
-  selectedIndices.value = s
+function problemId(problem: Problem): string {
+  return problemFingerprint(problem)
+}
+
+function toggleSelect(problem: Problem) {
+  const id = problemId(problem)
+  const selected = new Set(selectedProblemIds.value)
+  if (selected.has(id)) selected.delete(id)
+  else selected.add(id)
+  selectedProblemIds.value = selected
 }
 
 function selectAll() {
-  if (selectedIndices.value.size === paged.value.length) {
-    selectedIndices.value = new Set()
+  const pageIds = paged.value.map(problemId)
+  const allPageSelected = pageIds.every((id) => selectedProblemIds.value.has(id))
+  const selected = new Set(selectedProblemIds.value)
+  if (allPageSelected) {
+    for (const id of pageIds) selected.delete(id)
   } else {
-    selectedIndices.value = new Set(paged.value.map((_, i) => i))
+    for (const id of pageIds) selected.add(id)
   }
+  selectedProblemIds.value = selected
 }
 
-function deleteSelected() {
-  const toRemove = paged.value.filter((_, i) => selectedIndices.value.has(i))
-  for (const p of toRemove) removeWrong(p)
-  selectedIndices.value = new Set()
+async function focusAfterRemoval(preferredIndex: number | null) {
+  await nextTick()
+  const remaining = filtered.value
+  if (preferredIndex === null || remaining.length === 0) {
+    wrongProblemsHeading.value?.focus({ preventScroll: true })
+    return
+  }
+
+  const targetIndex = Math.min(Math.max(preferredIndex, 0), remaining.length - 1)
+  const targetProblemId = problemId(remaining[targetIndex])
+  page.value = Math.floor(targetIndex / PAGE_SIZE) + 1
+  await nextTick()
+
+  const targetButton = Array.from(
+    pageRoot.value?.querySelectorAll<HTMLButtonElement>('[data-wrong-problem-delete]') ?? [],
+  ).find((button) => button.dataset.problemId === targetProblemId)
+  ;(targetButton ?? wrongProblemsHeading.value)?.focus({ preventScroll: true })
 }
+
+async function deleteSelected() {
+  importMessage.value = null
+  const beforeDelete = filtered.value
+  const pageStart = (page.value - 1) * PAGE_SIZE
+  const selectedOnPage = paged.value.findIndex((problem) => selectedProblemIds.value.has(problemId(problem)))
+  const anchorIndex = selectedOnPage >= 0 ? pageStart + selectedOnPage : pageStart
+  const preferredIndex = beforeDelete
+    .slice(0, anchorIndex)
+    .filter((problem) => !selectedProblemIds.value.has(problemId(problem)))
+    .length
+  const toRemove = wrongProblems.value.filter((problem) => selectedProblemIds.value.has(problemId(problem)))
+  if (!removeManyWrong(toRemove)) {
+    operationError.value = '批量删除失败，请检查浏览器存储权限或剩余空间。'
+    return
+  }
+  operationError.value = null
+  selectedProblemIds.value = new Set()
+  await focusAfterRemoval(preferredIndex)
+}
+
+async function deleteProblem(problem: Problem) {
+  importMessage.value = null
+  const preferredIndex = filtered.value.findIndex((candidate) => problemId(candidate) === problemId(problem))
+  if (!removeWrong(problem)) {
+    operationError.value = '删除失败，请检查浏览器存储权限或剩余空间。'
+    return
+  }
+  operationError.value = null
+  await focusAfterRemoval(preferredIndex)
+}
+
+async function clearWrongProblems() {
+  importMessage.value = null
+  if (!clearAll()) {
+    operationError.value = '清空失败，请检查浏览器存储权限或剩余空间。'
+    return
+  }
+  operationError.value = null
+  selectedProblemIds.value = new Set()
+  await focusAfterRemoval(null)
+}
+
+const allPageSelected = computed(() =>
+  paged.value.length > 0 && paged.value.every((problem) => selectedProblemIds.value.has(problemId(problem))),
+)
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 function formatAnswer(p: Problem): string {
+  if (p.type === 0) {
+    if (typeof p.answer === 'number' && p.choices) return p.choices[p.answer] ?? '确认完成'
+    return typeof p.answer === 'string' ? p.answer : '确认完成'
+  }
   if (p.type === 3) return p.answer as string
   if (p.type === 2) return (p.answer as number[]).map((n) => CHOICE_LETTERS[n]).join(', ')
   return CHOICE_LETTERS[p.answer as number]
 }
 
-function handleImport(e: Event) {
+async function handleImport(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
-  importJSON(file).then(({ success, count: c }) => {
-    importMessage.value = success
-      ? `成功导入，当前共 ${c} 道错题`
-      : '导入失败，请检查文件格式'
+  importMessage.value = null
+  try {
+    const result = await importJSON(file)
+    if (result.success) {
+      importMessage.value = `成功导入，当前共 ${result.count} 道错题`
+      operationError.value = null
+    } else {
+      importMessage.value = null
+      operationError.value = result.error ?? '导入失败，请检查文件格式。'
+    }
+  } catch {
+    importMessage.value = null
+    operationError.value = '导入失败，无法读取所选文件。'
+  } finally {
     input.value = ''
-  })
+  }
 }
 
 function clearFilters() {
@@ -132,8 +227,8 @@ function onConfirm() {
 function confirmDeleteSelected() {
   askConfirm(
     '删除选中错题',
-    `确认删除选中的 ${selectedIndices.value.size} 道错题？此操作不可恢复。`,
-    () => { deleteSelected() },
+    `确认删除选中的 ${selectedProblemIds.value.size} 道错题？此操作不可恢复。`,
+    () => { void deleteSelected() },
   )
 }
 
@@ -141,7 +236,7 @@ function confirmClearAll() {
   askConfirm(
     '清空错题本',
     '确认清空所有错题？此操作不可恢复。',
-    () => { clearAll() },
+    () => { void clearWrongProblems() },
   )
 }
 
@@ -187,6 +282,22 @@ const visiblePages = computed(() => {
   return pages
 })
 
+watch([totalPages, wrongProblems], ([total]) => {
+  if (page.value > Math.max(total, 1)) page.value = Math.max(total, 1)
+  const existing = new Set(wrongProblems.value.map(problemId))
+  selectedProblemIds.value = new Set(
+    Array.from(selectedProblemIds.value).filter((id) => existing.has(id)),
+  )
+})
+
+function startWrongReview() {
+  router.push({
+    name: 'quiz',
+    params: { bankId: WRONG_REVIEW_BANK_ID },
+    query: { mode: 'wrong-review', fresh: '1' },
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Type chip colours
 // ---------------------------------------------------------------------------
@@ -212,7 +323,7 @@ const typeDotClass = (t: number): string => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl px-4 pb-16">
+  <div ref="pageRoot" class="mx-auto max-w-3xl px-4 pb-16">
 
     <!-- ============================================================ -->
     <!-- Header                                                       -->
@@ -226,7 +337,11 @@ const typeDotClass = (t: number): string => {
         >
           <ArrowLeft class="h-5 w-5" />
         </button>
-        <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+        <h1
+          ref="wrongProblemsHeading"
+          tabindex="-1"
+          class="rounded text-2xl font-bold tracking-tight text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:text-white"
+        >
           错题本
         </h1>
         <span
@@ -237,6 +352,10 @@ const typeDotClass = (t: number): string => {
           {{ count }}
         </span>
       </div>
+      <button v-if="count > 0" type="button" class="btn btn-primary h-9 px-3" @click="startWrongReview">
+        <Play class="h-4 w-4" />
+        复习错题
+      </button>
     </div>
 
     <!-- ============================================================ -->
@@ -244,10 +363,10 @@ const typeDotClass = (t: number): string => {
     <!-- ============================================================ -->
     <div
       v-if="count > 0"
-      class="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 animate-slide-up"
+      class="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3 animate-slide-up"
     >
       <div
-        v-for="t in [1, 2, 3, 4]"
+        v-for="t in [0, 1, 2, 3, 4]"
         :key="t"
         class="rounded-xl border px-3 py-3 sm:px-4 sm:py-3.5 transition-colors duration-200"
         :class="[
@@ -361,8 +480,8 @@ const typeDotClass = (t: number): string => {
           <span>
             第 {{ page }} / {{ totalPages || 1 }} 页
           </span>
-          <span v-if="selectedIndices.size > 0" class="ml-auto font-medium text-blue-600 dark:text-blue-400">
-            已选 {{ selectedIndices.size }} 项
+          <span v-if="selectedProblemIds.size > 0" class="ml-auto font-medium text-blue-600 dark:text-blue-400">
+            已选 {{ selectedProblemIds.size }} 项
           </span>
         </div>
       </div>
@@ -391,13 +510,13 @@ const typeDotClass = (t: number): string => {
         <span class="flex-1" />
 
         <button
-          v-if="selectedIndices.size > 0"
+          v-if="selectedProblemIds.size > 0"
           class="btn btn-ghost text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
           @click="confirmDeleteSelected"
           aria-label="批量删除选中项"
         >
           <Trash2 class="h-3.5 w-3.5" />
-          删除选中 ({{ selectedIndices.size }})
+          删除选中 ({{ selectedProblemIds.size }})
         </button>
         <button
           class="btn btn-ghost text-xs text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-300"
@@ -410,11 +529,20 @@ const typeDotClass = (t: number): string => {
 
         <span
           v-if="importMessage"
+          role="status"
           class="ml-auto self-center animate-fade-in text-xs text-gray-500 dark:text-gray-400"
         >
           {{ importMessage }}
         </span>
       </div>
+
+      <p
+        v-if="operationError"
+        role="alert"
+        class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300"
+      >
+        {{ operationError }}
+      </p>
 
       <!-- ========================================================== -->
       <!-- Select all toggle                                          -->
@@ -426,7 +554,7 @@ const typeDotClass = (t: number): string => {
           <input
             type="checkbox"
             class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            :checked="selectedIndices.size === paged.length && paged.length > 0"
+            :checked="allPageSelected"
             @change="selectAll"
           />
           全选当前页
@@ -442,10 +570,10 @@ const typeDotClass = (t: number): string => {
         class="space-y-2.5"
       >
         <div
-          v-for="(problem, idx) in paged"
-          :key="problem.content"
+          v-for="problem in paged"
+          :key="problemId(problem)"
           class="group relative flex items-start gap-3 rounded-xl border bg-white p-4 transition-all duration-200 sm:p-5"
-          :class="selectedIndices.has(idx)
+          :class="selectedProblemIds.has(problemId(problem))
             ? 'border-blue-300 bg-blue-50/60 ring-2 ring-blue-400/30 shadow-md dark:border-blue-700 dark:bg-blue-950/20 dark:ring-blue-600/30'
             : 'border-gray-200 shadow-sm hover:border-gray-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800/60 dark:hover:border-gray-600'"
         >
@@ -454,8 +582,8 @@ const typeDotClass = (t: number): string => {
             <input
               type="checkbox"
               class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              :checked="selectedIndices.has(idx)"
-              @change="toggleSelect(idx)"
+              :checked="selectedProblemIds.has(problemId(problem))"
+              @change="toggleSelect(problem)"
             />
           </label>
 
@@ -501,9 +629,12 @@ const typeDotClass = (t: number): string => {
 
           <!-- Remove button -->
           <button
-            class="btn btn-ghost shrink-0 p-1.5 text-gray-300 opacity-0 transition-all duration-200 group-hover:opacity-100 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400"
-            :class="selectedIndices.has(idx) ? 'opacity-100' : ''"
-            @click="removeWrong(problem)"
+            type="button"
+            class="btn btn-ghost shrink-0 p-1.5 text-gray-300 opacity-0 transition-all duration-200 group-hover:opacity-100 hover:text-red-500 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:text-gray-600 dark:hover:text-red-400"
+            :class="selectedProblemIds.has(problemId(problem)) ? 'opacity-100' : ''"
+            data-wrong-problem-delete
+            :data-problem-id="problemId(problem)"
+            @click="void deleteProblem(problem)"
             :aria-label="`移出「${problem.content.slice(0, 20)}」`"
             title="移出错题本"
           >

@@ -14,7 +14,7 @@ defineProps<{
     <div class="flex items-center gap-3">
       <div class="relative h-2.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
         <div
-          class="h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
+          class="paper-gradient-primary h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
           :style="{ width: totalCount > 0 ? ((currentIndex + 1) / totalCount * 100) + '%' : '0%' }"
         />
       </div>

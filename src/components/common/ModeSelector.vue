@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { PracticeMode, CustomPracticeConfig } from '@/types/problem'
 import { PROBLEM_TYPE_LABELS } from '@/types/problem'
 import {
@@ -9,10 +9,13 @@ import {
   ListOrdered,
   Shuffle,
   FileText,
+  RotateCcw,
 } from '@lucide/vue'
 
 const props = defineProps<{
   show: boolean
+  /** The review option is only available when the parent has loaded wrong problems. */
+  wrongProblemCount?: number
 }>()
 
 const emit = defineEmits<{
@@ -31,9 +34,13 @@ const enabledTypes = ref<Record<number, boolean>>({
   4: true,
 })
 const shuffleEnabled = ref(true)
-const panelDirection = ref<'forward' | 'backward'>('forward')
 const validationShake = ref(false)
+const dialogRef = ref<HTMLElement | null>(null)
+const closeButtonRef = ref<HTMLButtonElement | null>(null)
 const backButtonRef = ref<HTMLButtonElement | null>(null)
+let previouslyFocusedElement: HTMLElement | null = null
+let previousBodyOverflow: string | null = null
+let resetTimer: ReturnType<typeof setTimeout> | undefined
 
 // ---- mode card definitions ----
 interface ModeCard {
@@ -46,8 +53,8 @@ interface ModeCard {
   action: () => void
 }
 
-const modeCards: ModeCard[] = [
-  {
+const modeCards = computed<ModeCard[]>(() => {
+  const cards: ModeCard[] = [{
     mode: 'sequential',
     icon: ListOrdered,
     color: 'text-blue-600 dark:text-blue-400',
@@ -55,8 +62,7 @@ const modeCards: ModeCard[] = [
     title: '顺序练习',
     description: '按照题库原始顺序逐题练习，选择题选项会随机打乱',
     action: () => emit('confirm', 'sequential'),
-  },
-  {
+  }, {
     mode: 'random',
     icon: Shuffle,
     color: 'text-purple-600 dark:text-purple-400',
@@ -64,8 +70,21 @@ const modeCards: ModeCard[] = [
     title: '乱序练习',
     description: '题目和选项顺序完全随机，全面检验知识掌握',
     action: () => emit('confirm', 'random'),
-  },
-  {
+  }]
+
+  if ((props.wrongProblemCount ?? 0) > 0) {
+    cards.push({
+      mode: 'wrong-review',
+      icon: RotateCcw,
+      color: 'text-rose-600 dark:text-rose-400',
+      bgClass: 'bg-rose-100 dark:bg-rose-900/30',
+      title: '错题复习',
+      description: `集中复习错题本中的 ${props.wrongProblemCount} 道题`,
+      action: () => emit('confirm', 'wrong-review'),
+    })
+  }
+
+  cards.push({
     mode: 'mock-exam',
     icon: FileText,
     color: 'text-amber-600 dark:text-amber-400',
@@ -73,8 +92,7 @@ const modeCards: ModeCard[] = [
     title: '模拟考试',
     description: '限时作答，交卷后统一判分，支持分题型计分',
     action: () => emit('confirm', 'mock-exam'),
-  },
-  {
+  }, {
     mode: 'custom',
     icon: Settings2,
     color: 'text-emerald-600 dark:text-emerald-400',
@@ -82,17 +100,99 @@ const modeCards: ModeCard[] = [
     title: '自定义练习',
     description: '选择特定题型和乱序方式，量身定制练习内容',
     action: openCustomPanel,
-  },
-]
+  })
+
+  return cards
+})
 
 function openCustomPanel() {
-  panelDirection.value = 'forward'
   showCustomPanel.value = true
 }
 
 function closeCustomPanel() {
-  panelDirection.value = 'backward'
   showCustomPanel.value = false
+}
+
+function focusActivePanel() {
+  nextTick(() => {
+    if (!props.show) return
+    const preferred = showCustomPanel.value ? backButtonRef.value : closeButtonRef.value
+    ;(preferred ?? dialogRef.value)?.focus({ preventScroll: true })
+  })
+}
+
+function handleEscape(event: KeyboardEvent) {
+  event.preventDefault()
+  event.stopPropagation()
+  if (showCustomPanel.value) {
+    closeCustomPanel()
+  } else {
+    emit('close')
+  }
+}
+
+function trapFocus(event: KeyboardEvent) {
+  const dialog = dialogRef.value
+  if (!dialog) return
+
+  const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+    'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+  )).filter((element) => element.getClientRects().length > 0)
+
+  if (focusable.length === 0) {
+    event.preventDefault()
+    dialog.focus({ preventScroll: true })
+    return
+  }
+
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  const active = document.activeElement
+
+  if (event.shiftKey && (active === first || !dialog.contains(active))) {
+    event.preventDefault()
+    last.focus({ preventScroll: true })
+  } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
+    event.preventDefault()
+    first.focus({ preventScroll: true })
+  }
+}
+
+function handleDocumentKeydown(event: KeyboardEvent) {
+  if (!props.show) return
+  if (event.key === 'Escape') handleEscape(event)
+  else if (event.key === 'Tab') trapFocus(event)
+}
+
+function handleFocusIn(event: FocusEvent) {
+  const dialog = dialogRef.value
+  if (!props.show || !dialog || !(event.target instanceof Node)) return
+  if (dialog.contains(event.target)) return
+  focusActivePanel()
+}
+
+function addDocumentListeners() {
+  document.addEventListener('keydown', handleDocumentKeydown)
+  document.addEventListener('focusin', handleFocusIn)
+}
+
+function removeDocumentListeners() {
+  document.removeEventListener('keydown', handleDocumentKeydown)
+  document.removeEventListener('focusin', handleFocusIn)
+}
+
+function unlockBodyScroll() {
+  if (previousBodyOverflow === null) return
+  document.body.style.overflow = previousBodyOverflow
+  previousBodyOverflow = null
+}
+
+function restorePreviousFocus() {
+  const target = previouslyFocusedElement
+  previouslyFocusedElement = null
+  nextTick(() => {
+    if (target?.isConnected) target.focus()
+  })
 }
 
 function toggleType(type: number) {
@@ -122,23 +222,39 @@ function confirmCustom() {
   showCustomPanel.value = false
 }
 
-// Focus management: focus back button when custom panel opens
-watch(showCustomPanel, (val) => {
-  if (val) {
-    nextTick(() => {
-      backButtonRef.value?.focus()
-    })
+watch(() => props.show, (visible) => {
+  if (resetTimer) clearTimeout(resetTimer)
+
+  if (visible) {
+    previouslyFocusedElement = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+    if (previousBodyOverflow === null) {
+      previousBodyOverflow = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+    }
+    addDocumentListeners()
+    focusActivePanel()
+    return
   }
+
+  removeDocumentListeners()
+  unlockBodyScroll()
+  restorePreviousFocus()
+  resetTimer = setTimeout(() => {
+    showCustomPanel.value = false
+  }, 250)
+}, { immediate: true })
+
+onMounted(() => {
+  if (props.show) focusActivePanel()
 })
 
-// Reset custom panel state when the modal is closed
-watch(() => props.show, (val) => {
-  if (!val) {
-    // Delay reset to allow leave animation to complete
-    setTimeout(() => {
-      showCustomPanel.value = false
-    }, 250)
-  }
+onBeforeUnmount(() => {
+  if (resetTimer) clearTimeout(resetTimer)
+  removeDocumentListeners()
+  unlockBodyScroll()
+  restorePreviousFocus()
 })
 </script>
 
@@ -147,23 +263,30 @@ watch(() => props.show, (val) => {
     <Transition name="sheet">
       <div
         v-if="show"
-        class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center"
+        class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center sm:p-4"
         @click.self="emit('close')"
       >
         <!-- Main mode list panel -->
-        <Transition name="panel-forward" mode="out-in">
+        <Transition name="panel-forward" mode="out-in" @after-enter="focusActivePanel">
           <div
             v-if="!showCustomPanel"
+            ref="dialogRef"
             key="main"
-            class="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-xl dark:bg-slate-800 sm:rounded-2xl sm:m-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mode-selector-title"
+            tabindex="-1"
+            class="max-h-[calc(100dvh-1rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-5 shadow-xl dark:bg-slate-800 sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl sm:p-6"
             @click.stop
           >
             <!-- Header -->
             <div class="flex items-center justify-between mb-5">
-              <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              <h2 id="mode-selector-title" class="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 选择练习模式
               </h2>
               <button
+                ref="closeButtonRef"
+                type="button"
                 class="btn btn-ghost h-9 w-9 p-0"
                 aria-label="关闭"
                 @click="emit('close')"
@@ -177,6 +300,7 @@ watch(() => props.show, (val) => {
               <button
                 v-for="card in modeCards"
                 :key="card.mode"
+                type="button"
                 class="card w-full text-left cursor-pointer group
                        active:scale-[0.985] transition-transform duration-150
                        hover:border-blue-300 dark:hover:border-blue-700
@@ -218,21 +342,27 @@ watch(() => props.show, (val) => {
           <!-- Custom practice sub-panel -->
           <div
             v-else
+            ref="dialogRef"
             key="custom"
-            class="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-xl dark:bg-slate-800 sm:rounded-2xl sm:m-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="custom-practice-title"
+            tabindex="-1"
+            class="max-h-[calc(100dvh-1rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-5 shadow-xl dark:bg-slate-800 sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl sm:p-6"
             @click.stop
           >
             <!-- Header -->
             <div class="flex items-center gap-3 mb-5">
               <button
                 ref="backButtonRef"
+                type="button"
                 class="btn btn-ghost h-9 w-9 shrink-0 p-0"
                 aria-label="返回"
                 @click="closeCustomPanel"
               >
                 <ArrowLeft class="h-5 w-5" />
               </button>
-              <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              <h2 id="custom-practice-title" class="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 自定义练习
               </h2>
             </div>
@@ -321,8 +451,6 @@ watch(() => props.show, (val) => {
                          focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
                   :class="shuffleEnabled ? 'bg-blue-500 dark:bg-blue-400' : 'bg-gray-200 dark:bg-gray-600'"
                   @click="shuffleEnabled = !shuffleEnabled"
-                  @keydown.space.prevent="shuffleEnabled = !shuffleEnabled"
-                  @keydown.enter.prevent="shuffleEnabled = !shuffleEnabled"
                 >
                   <span
                     class="pointer-events-none inline-block h-5 w-5 transform rounded-full
@@ -342,6 +470,7 @@ watch(() => props.show, (val) => {
 
               <!-- Confirm button -->
               <button
+                type="button"
                 class="btn btn-primary w-full text-base py-2.5 active:scale-[0.98] transition-transform"
                 @click="confirmCustom"
               >

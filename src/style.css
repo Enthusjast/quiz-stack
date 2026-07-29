@@ -85,8 +85,170 @@
     @apply shadow-none hover:shadow-none rounded-lg border-slate-300 dark:border-slate-600;
   }
   .theme-paper .btn {
-    @apply rounded-md;
+    @apply rounded-md shadow-none;
   }
+  .theme-paper .btn-primary {
+    @apply shadow-none;
+  }
+}
+
+/* ===== Paper Theme ===== */
+/* Flat, print-like surfaces are opt-in through semantic paper-* hooks. */
+.theme-paper {
+  --paper-surface: #ffffff;
+  --paper-surface-strong: #ffffff;
+  --paper-surface-muted: #f8fafc;
+  --paper-ink: #0f172a;
+  --paper-border: #cbd5e1;
+  --paper-primary: #2563eb;
+  --paper-danger-strong: #dc2626;
+  --paper-success: #ecfdf5;
+  --paper-danger: #fef2f2;
+  --paper-warning: #fffbeb;
+}
+
+.dark.theme-paper {
+  --paper-surface: #1e293b;
+  --paper-surface-strong: #0f172a;
+  --paper-surface-muted: #172033;
+  --paper-ink: #f8fafc;
+  --paper-border: #475569;
+  --paper-primary: #3b82f6;
+  --paper-danger-strong: #ef4444;
+  --paper-success: #022c22;
+  --paper-danger: #2d0a0a;
+  --paper-warning: #2d2000;
+}
+
+.theme-paper .paper-surface,
+.theme-paper .paper-surface-strong,
+.theme-paper .paper-surface-muted,
+.theme-paper .paper-control {
+  background-image: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.theme-paper .paper-surface,
+.theme-paper .paper-control {
+  background-color: var(--paper-surface);
+}
+
+.theme-paper .paper-surface-strong {
+  background-color: var(--paper-surface-strong);
+}
+
+.theme-paper .paper-surface-muted {
+  background-color: var(--paper-surface-muted);
+}
+
+.theme-paper .paper-flat,
+.theme-paper .paper-flat:hover,
+.theme-paper .paper-flat:focus-visible {
+  box-shadow: none;
+}
+
+.theme-paper .paper-flat:focus-visible {
+  outline: 2px solid var(--paper-primary);
+  outline-offset: 2px;
+}
+
+.theme-paper .paper-no-lift.paper-no-lift,
+.theme-paper .paper-no-lift.paper-no-lift:hover,
+.theme-paper .paper-no-lift.paper-no-lift:active {
+  transform: none;
+}
+
+.theme-paper .paper-gradient-primary,
+.theme-paper .paper-gradient-success,
+.theme-paper .paper-gradient-warning,
+.theme-paper .paper-gradient-danger {
+  background-image: none;
+}
+
+.theme-paper .paper-gradient-primary {
+  background-color: var(--paper-primary);
+}
+
+.theme-paper .paper-gradient-success {
+  background-color: #10b981;
+}
+
+.theme-paper .paper-gradient-warning {
+  background-color: #f59e0b;
+}
+
+.theme-paper .paper-gradient-danger {
+  background-color: var(--paper-danger-strong);
+}
+
+.theme-paper .hero-title,
+.theme-paper .paper-display-primary,
+.theme-paper .paper-display-accent,
+.theme-paper .paper-display-secondary {
+  background-image: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+}
+
+.theme-paper .hero-title {
+  color: var(--paper-ink);
+}
+
+.theme-paper .paper-display-primary {
+  color: var(--paper-primary);
+}
+
+.theme-paper .paper-display-accent {
+  color: #d97706;
+}
+
+.theme-paper .paper-display-secondary {
+  color: #7c3aed;
+}
+
+.dark.theme-paper .paper-display-accent {
+  color: #fbbf24;
+}
+
+.dark.theme-paper .paper-display-secondary {
+  color: #a78bfa;
+}
+
+.theme-paper .paper-option,
+.theme-paper .paper-feedback {
+  background-image: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.theme-paper .paper-option-neutral {
+  background-color: var(--paper-surface);
+}
+
+.theme-paper .paper-option-selected {
+  background-color: var(--paper-surface-muted);
+  border-color: var(--paper-primary);
+}
+
+.theme-paper .paper-feedback-success {
+  background-color: var(--paper-success);
+}
+
+.theme-paper .paper-feedback-error {
+  background-color: var(--paper-danger);
+}
+
+.theme-paper .paper-feedback-warning {
+  background-color: var(--paper-warning);
+}
+
+.theme-paper .paper-selected-ring {
+  border-color: var(--paper-primary);
+  box-shadow: none;
 }
 
 /* Accent button — currently unused in templates; kept outside @layer to avoid tree-shaking */
@@ -213,6 +375,15 @@
 }
 .nav-panel-leave-to > :last-child {
   transform: translateY(100%);
+}
+
+/* Hero title — single-rule gradient text (avoids CSS load-order flash) */
+.hero-title {
+  background-image: linear-gradient(to right, #2563eb, #7c3aed, #f59e0b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }
 
 /* Shimmer skeleton */
